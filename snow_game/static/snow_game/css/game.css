@@ -26,7 +26,7 @@ canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
 #dead h1{margin:0;font-size:44px;text-shadow:0 3px 12px #000}
 #dead p{margin:0;font-size:16px;max-width:80vw}
 .btn{font-size:18px;font-weight:800;padding:12px 24px;border-radius:14px;border:0;background:linear-gradient(#5be26b,#1fa22f);color:#fff;box-shadow:0 5px 14px rgba(0,0,0,.4);cursor:pointer}
-.btn.sec{background:linear-gradient(#7a8aa0,#4b5a70)}.btn.danger{background:linear-gradient(#e0565b,#b3262c)}
+a.btn{display:inline-block;text-decoration:none;text-align:center}.btn.sec{background:linear-gradient(#7a8aa0,#4b5a70)}.btn.danger{background:linear-gradient(#e0565b,#b3262c)}
 #modal,#lbmodal{position:fixed;inset:0;background:rgba(10,20,40,.55);display:none;align-items:center;justify-content:center}
 #panel,#lbpanel{position:relative;width:min(360px,90vw);max-height:86vh;overflow:auto;border-radius:18px;padding:22px 20px 18px;display:flex;flex-direction:column;gap:12px;color:#fff;background:rgba(25,45,70,.95);border:1px solid rgba(255,255,255,.2)}
 #panel h2,#lbpanel h2{margin:0;font-size:20px}

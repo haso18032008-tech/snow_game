@@ -42,6 +42,10 @@
   <input type="range" id="vsfx" min="0" max="100" step="5">
   <label>Графика</label>
   <div class="seg"><button id="qhigh">Высокая</button><button id="qlow">Лёгкая</button></div>
+  {% if finstat_url %}
+  <label>Наши проекты</label>
+  <a class="btn sec" href="{{ finstat_url }}" target="_blank" rel="noopener">Финстат — личные финансы</a>
+  {% endif %}
   <button class="btn danger" id="reset">Сбросить прогресс</button>
  </div>
  <div id="pane-stat" class="pane" style="display:none"><div id="statbody"></div></div>

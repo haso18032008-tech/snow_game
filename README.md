@@ -18,6 +18,7 @@ python manage.py runserver
 | `DJANGO_ALLOWED_HOSTS` | свой домен, например `snow-game.com,www.snow-game.com` (адрес `*.onrender.com` Render добавляет сам) |
 | `GAME_ADMIN_USERNAME` | логин админа; `build.sh` выдаёт ему `is_staff` + `is_superuser` на каждом деплое |
 | `GAME_ADMIN_PASSWORD` | нужен только если такого аккаунта ещё нет (создастся при сборке); после первого деплоя можно удалить |
+| `FINSTAT_URL` | адрес Финстата (`https://...`) для раздела «Наши проекты» в настройках игры; пусто — раздела нет |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | включают вход через Google; без них кнопки нет |
 
 ## Деплой на Render

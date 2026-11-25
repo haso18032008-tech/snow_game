@@ -36,7 +36,7 @@ def snow_game_view(request):
         # страница привязки Google показывается, только если Google вообще настроен
         "accountUrl": reverse("socialaccount_connections") if settings.GOOGLE_ENABLED else "",
     }
-    return render(request, "snow_game/index.html", {"cfg": cfg})
+    return render(request, "snow_game/index.html", {"cfg": cfg, "finstat_url": settings.FINSTAT_URL})
 
 
 @never_cache

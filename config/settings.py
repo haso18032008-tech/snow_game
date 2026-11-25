@@ -153,4 +153,10 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# Раздел «Наши проекты» в настройках игры: адрес Финстата задаётся переменной окружения, чтобы
+# не зашивать его в код и менять без деплоя. Пусто — раздела просто нет.
+FINSTAT_URL = os.environ.get("FINSTAT_URL", "").strip()
+if not FINSTAT_URL.startswith(("https://", "http://")):
+    FINSTAT_URL = ""  # защита от опечатки и от javascript:-ссылки в href
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
