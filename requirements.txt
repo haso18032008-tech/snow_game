@@ -1,0 +1,9 @@
+Django>=6.0,<7.0
+django-allauth[socialaccount]>=65.0
+gunicorn>=22.0
+whitenoise>=6.7
+dj-database-url>=2.2
+psycopg[binary]>=3.2
+# Windows не поставляет базу часовых поясов — без tzdata Django на SQLite падает.
+# На Linux/Render это no-op.
+tzdata; sys_platform == "win32"

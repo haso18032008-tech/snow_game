@@ -1,0 +1,70 @@
+{% load static %}<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Снежная ферма</title>
+<link rel="stylesheet" href="{% static 'snow_game/css/game.css' %}">
+</head><body>
+<canvas id="c"></canvas>
+
+<div id="left">
+ <div id="hpbox" class="glass"><div id="hptxt"><span><img data-ico="heart" class="ico" alt=""> <span id="nickname">Выживший</span></span><span id="hpnum">100/100</span></div><div id="hpbar"><div id="hpfill"></div></div></div>
+ <div id="axebox" class="glass"><img id="axeic" data-ico="axe" class="ico" alt=""> <span id="axename">Каменный топор</span></div>
+ <div id="tip" class="glass">Води пальцем по экрану — персонаж идёт. Топоры вокруг сами рубят ёлки и мобов. Встань на плитку с ценой — деньги уйдут на улучшение. Выложи товар на лавку — покупатели принесут деньги.<button id="tipx" aria-label="Закрыть">×</button></div>
+</div>
+
+<div id="right">
+ <div id="topbtns"><button id="trophy" aria-label="Таблица лидеров"><img data-ico="trophy" alt=""></button><button id="gear" aria-label="Настройки"><img data-ico="gear" alt=""></button></div>
+ <div class="res glass"><img class="ic" data-ico="cash" alt=""><span id="cash" class="num">0</span></div>
+ <div class="res glass"><img class="ic" data-ico="log" alt=""><span id="wood" class="num">0</span></div>
+ <div class="res glass"><img id="meatic" class="ic" data-ico="meat" alt=""><span id="meat" class="num">0</span></div>
+ <div class="res glass"><img class="ic" data-ico="gold" alt=""><span id="gold" class="num">0</span></div>
+</div>
+
+<div id="banner" class="glass"></div>
+<div id="info" class="glass"></div>
+<button id="eat"><img data-ico="meat" class="ico" alt=""> Съесть</button>
+<div id="stick"><div id="knob"></div></div>
+<div id="fps" title="Нажми — подробности"></div>
+
+<div id="dead"><h1><img data-ico="skull" class="ico" alt=""> Ты погиб</h1><p>Всё, что нёс, выпало на месте гибели — вернись и подбери. Четверть денег тоже выпала.</p><button class="btn" id="resp">Возродиться на базе</button></div>
+
+<div id="modal"><div id="panel">
+ <button id="closeset" aria-label="Закрыть">×</button>
+ <div class="tabs"><button id="tabset" class="on">Настройки</button><button id="tabstat">Статистика</button></div>
+ <div id="pane-set" class="pane">
+  <div id="acct" class="note"></div>
+  <label for="nick">Ник (виден в таблице лидеров)</label>
+  <input id="nick" maxlength="16" placeholder="Выживший" autocomplete="off">
+  <button class="btn" id="savenick">Сохранить ник</button>
+  <label>Музыка</label>
+  <input type="range" id="vmus" min="0" max="100" step="5">
+  <label>Звуки</label>
+  <input type="range" id="vsfx" min="0" max="100" step="5">
+  <label>Графика</label>
+  <div class="seg"><button id="qhigh">Высокая</button><button id="qlow">Лёгкая</button></div>
+  <button class="btn danger" id="reset">Сбросить прогресс</button>
+ </div>
+ <div id="pane-stat" class="pane" style="display:none"><div id="statbody"></div></div>
+</div></div>
+
+<div id="lbmodal"><div id="lbpanel">
+ <button id="closelb" aria-label="Закрыть">×</button>
+ <h2><img data-ico="trophy" class="ico" alt=""> <span id="lbtitle">Таблица лидеров</span></h2>
+ <button id="lbback" class="seg-back" style="display:none">← Назад</button>
+ <div class="note" id="lbnote">Места по сумме заработанных денег. Нажми на игрока — увидишь его статистику.</div>
+ <div id="lbbody"></div>
+</div></div>
+
+{{ cfg|json_script:"sg-user" }}
+<script src="{% static 'snow_game/vendor/three.min.js' %}"></script>
+<script src="{% static 'snow_game/js/config.js' %}"></script>
+<script src="{% static 'snow_game/js/icons.js' %}"></script>
+<script src="{% static 'snow_game/js/state.js' %}"></script>
+<script src="{% static 'snow_game/js/game.js' %}"></script>
+<script src="{% static 'snow_game/js/render.js' %}"></script>
+<script src="{% static 'snow_game/js/audio.js' %}"></script>
+<script src="{% static 'snow_game/js/legacy_import.js' %}"></script>
+<script src="{% static 'snow_game/js/cloud.js' %}"></script>
+<script src="{% static 'snow_game/js/ui.js' %}"></script>
+<script src="{% static 'snow_game/js/main.js' %}"></script>
+</body></html>

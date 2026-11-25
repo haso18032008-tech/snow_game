@@ -1,0 +1,36 @@
+{% load static %}<!DOCTYPE html>
+{# Оформление страниц входа/регистрации allauth в стиле игры. Остальные шаблоны allauth наследуются отсюда. #}
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block head_title %}{% endblock head_title %} — Снежная ферма</title>
+{% block extra_head %}{% endblock extra_head %}
+<style>
+  :root { --bg1:#10213a; --bg2:#1d3a5f; --card:rgba(255,255,255,.1); --line:rgba(255,255,255,.3); --link:#9dd2ff; --btn:#2f80ed; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px;
+         background:linear-gradient(160deg,var(--bg1),var(--bg2)); color:#fff; font:16px/1.4 system-ui,sans-serif; }
+  main { width:100%; max-width:380px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; backdrop-filter:blur(6px); }
+  h1 { margin:0 0 12px; font-size:22px; }
+  a { color:var(--link); }
+  input:not([type=checkbox]) { width:100%; padding:10px; margin:4px 0 12px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.1); color:#fff; font-size:16px; }
+  label { font-size:14px; opacity:.9; }
+  button, .btn { width:100%; padding:11px; border:0; border-radius:10px; background:var(--btn); color:#fff; font-size:16px; cursor:pointer; text-decoration:none; display:inline-block; text-align:center; }
+  ul.errorlist { margin:0 0 8px; padding:0; list-style:none; color:#ffb4b4; font-size:14px; }
+  .msgs { margin-bottom:12px; font-size:14px; }
+  hr { border:0; border-top:1px solid var(--line); margin:16px 0; }
+  .back { display:block; text-align:center; margin-top:14px; font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  {% block body %}
+    {% if messages %}<div class="msgs">{% for message in messages %}<div>{{ message }}</div>{% endfor %}</div>{% endif %}
+    {% block content %}{% endblock content %}
+    <a class="back" href="/">← В игру</a>
+  {% endblock body %}
+</main>
+{% block extra_body %}{% endblock extra_body %}
+</body>
+</html>
