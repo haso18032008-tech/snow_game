@@ -87,6 +87,40 @@
     g.scale.setScalar(1.18);
     return g;
   }
+  // Охотник джунглей: очень загорелый, почти голый (набедренная повязка, повязка на голове) и с огромным мачете
+  function makeHunter() {
+    const g = new THREE.Group(), bodyG = new THREE.Group();
+    const skin = mat('#3b2417', { flatShading: false }), cloth = mat('#c9a15a', { flatShading: false }), band = mat('#d4402b', { flatShading: false });
+    const hair = mat('#14100d', { flatShading: false }), eye = mat('#f6f1e6', { flatShading: false }), steel = mat('#dfe5ea'), hilt = mat('#5b3a22');
+    bodyG.add(mesh(GEO.cap, skin, 0, 1.02, 0, 1.0, 0.95, 0.78));                       // голый торс
+    bodyG.add(mesh(GEO.box, cloth, 0, 0.78, 0, 0.78, 0.34, 0.56));                      // набедренная повязка
+    bodyG.add(mesh(GEO.box, cloth, 0, 0.58, 0.29, 0.38, 0.5, 0.06));                    // передний лоскут
+    bodyG.add(mesh(GEO.sph, skin, 0, 1.86, 0.08, 0.3));                                // голова
+    bodyG.add(mesh(GEO.sph, hair, 0, 1.99, -0.06, 0.33, 0.2, 0.33));                   // волосы
+    bodyG.add(mesh(GEO.cyl, band, 0, 1.97, 0.02, 0.33, 0.06, 0.33));                   // повязка
+    for (const sx of [-1, 1]) { bodyG.add(mesh(GEO.sph, eye, sx * 0.11, 1.9, 0.33, 0.065)); bodyG.add(mesh(GEO.sph, hair, sx * 0.11, 1.9, 0.38, 0.03)); }
+    bodyG.add(mesh(GEO.box, eye, 0, 1.74, 0.36, 0.18, 0.04, 0.04));                    // зубастая улыбка
+    const arms = [], legs = [];
+    for (const sx of [-1, 1]) {
+      const arm = new THREE.Group(); arm.position.set(sx * 0.56, 1.42, 0);
+      arm.add(mesh(GEO.cap, skin, 0, -0.34, 0, 0.28, 0.7, 0.28));
+      arm.add(mesh(GEO.sph, skin, 0, -0.72, 0, 0.16));
+      if (sx === 1) { // огромное мачете в правой руке: клинок смотрит вперёд, рука рубит вращением вокруг плеча
+        const hm = mesh(GEO.cyl, hilt, 0, -0.72, 0.1, 0.1, 0.5, 0.1); hm.rotation.x = Math.PI / 2; arm.add(hm);
+        const bl = mesh(GEO.box, steel, 0, -0.74, 1.15, 0.06, 0.4, 1.7); arm.add(bl);
+        arm.add(mesh(GEO.box, steel, 0, -0.62, 2.0, 0.06, 0.5, 0.28));                  // расширенный кончик
+      }
+      bodyG.add(arm); arms.push(arm);
+      const lg = new THREE.Group(); lg.position.set(sx * 0.21, 0.6, 0);
+      lg.add(mesh(GEO.box, skin, 0, -0.27, 0, 0.24, 0.6, 0.26));
+      lg.add(mesh(GEO.box, skin, 0, -0.56, 0.06, 0.26, 0.1, 0.4));                       // босые ступни
+      bodyG.add(lg); legs.push(lg);
+    }
+    g.add(bodyG);
+    g.userData = { legs, arms, body: bodyG };
+    g.scale.setScalar(1.2);
+    return g;
+  }
   function animHuman(h, walk, t) {
     const u = h.userData, a = walk ? Math.sin(t * 14) * 0.7 : 0;
     u.legs[0].rotation.x = a; u.legs[1].rotation.x = -a;
@@ -421,15 +455,16 @@
   // Два вида в двух InstancedMesh: обычная и банановая (с гроздьями). Отросшая пальма может сменить вид.
   let palmIM, palmBanIM, palmStumpIM;
   function makePalmGeo(ban) {
-    const parts = [], lean = y => 0.035 * y * y;
-    for (let k = 0; k < 4; k++) {
-      const yc = 0.675 + k * 1.3, geo = new THREE.CylinderGeometry(0.2 - 0.025 * k, 0.27 - 0.025 * k, 1.35, 6);
+    // Пальма низкая (≈3.5 м), чтобы не закрывать игровое поле: ствол из 3 звеньев, крона короткая
+    const parts = [], lean = y => 0.07 * y * y;
+    for (let k = 0; k < 3; k++) {
+      const yc = 0.55 + k * 1.0, geo = new THREE.CylinderGeometry(0.2 - 0.03 * k, 0.27 - 0.03 * k, 1.05, 6);
       geo.translate(lean(yc), yc, 0);
       parts.push({ geo, color: () => (k % 2 ? [0.5, 0.36, 0.22] : [0.6, 0.45, 0.28]) });
     }
-    const cx = lean(5.3), cy = 5.35;
+    const cx = lean(3.05), cy = 3.05;
     for (let i = 0; i < 8; i++) {
-      const geo = new THREE.BoxGeometry(2.9, 0.07, 0.8); geo.translate(1.45, 0, 0);
+      const geo = new THREE.BoxGeometry(2.3, 0.07, 0.7); geo.translate(1.15, 0, 0);
       geo.applyMatrix4(new THREE.Matrix4().makeRotationZ(-0.4 - (i % 2) * 0.2));
       geo.applyMatrix4(new THREE.Matrix4().makeRotationY(i * Math.PI / 4));
       geo.translate(cx, cy, 0);
@@ -440,8 +475,8 @@
     if (ban) {
       for (let i = 0; i < 5; i++) {
         const geo = new THREE.SphereGeometry(1, 6, 5); geo.scale(0.14, 0.5, 0.14);
-        geo.translate(cx + Math.cos(i * 1.26) * 0.42, cy - 0.65, Math.sin(i * 1.26) * 0.42);
-        parts.push({ geo, color: yy => (yy > cy - 0.7 ? [0.75, 0.85, 0.2] : [1.0, 0.86, 0.15]) });
+        geo.translate(cx + Math.cos(i * 1.26) * 0.42, cy - 0.5, Math.sin(i * 1.26) * 0.42);
+        parts.push({ geo, color: yy => (yy > cy - 0.55 ? [0.75, 0.85, 0.2] : [1.0, 0.86, 0.15]) });
       }
     }
     return merge(parts);
@@ -793,7 +828,7 @@
   // ---------- джунгли: земля, база с лавками ----------
   // Земля — зелёный мох поверх снега; южный край (у стены) размыт. База невидима, пока не куплена «Джунгли-база».
   function buildJungleGround() {
-    const J = SG.JUNGLE, x0 = -200, x1 = SG.WALL_X, z0 = -200, z1 = J.z + 8;
+    const J = SG.JUNGLE, x0 = -200, x1 = SG.WALL_X, z0 = J.zMin - 10, z1 = J.z + 8;
     const W = 1024, H = Math.round(W * (z1 - z0) / (x1 - x0)), T = canvasTex(W, H), g = T.g;
     g.fillStyle = '#4c9a3a'; g.fillRect(0, 0, W, H);
     for (let i = 0; i < 420; i++) {
@@ -847,10 +882,38 @@
     }
     scene.add(root); jungleV.root = root;
   }
+  // Бамбуковая ограда джунглевой базы: растёт с уровнем «jup»; с севера оставлен проход для очереди покупателей
+  let jFence = null, jFenceL = -1;
+  function buildJFence(L) {
+    if (jFence) { jungleV.root.remove(jFence); jFence = null; }
+    jFenceL = L;
+    if (L < 1) return;
+    const r = SG.jbRect(L), g = new THREE.Group(), post = mat('#b98550'), tip = mat('#8f6a3a'), rail = mat('#6b4426');
+    const seg = (x0, z0, x1, z1, gap) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 1.5));
+      for (let i = 0; i <= n; i++) {
+        const x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n;
+        if (gap && x > gap[0] && x < gap[1]) continue;
+        g.add(mesh(GEO.cyl, post, x, 0.8, z, 0.22, 1.6, 0.22)); g.add(mesh(GEO.cone || GEO.cyl, tip, x, 1.7, z, 0.2, 0.3, 0.2));
+      }
+      const horiz = Math.abs(z1 - z0) < 0.01, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      for (const y of [0.55, 1.15]) {
+        if (horiz && gap) { // две части рейки вокруг прохода
+          const a = [x0, Math.min(x1, gap[0])], b = [Math.max(x0, gap[1]), x1];
+          for (const [s0, s1] of [a, b]) if (s1 > s0) g.add(mesh(GEO.box, rail, (s0 + s1) / 2, y, z0, s1 - s0, 0.1, 0.12));
+        } else g.add(mesh(GEO.box, rail, mx, y, mz, horiz ? len : 0.12, 0.1, horiz ? 0.12 : len));
+      }
+    };
+    seg(r.minX, r.maxZ, r.maxX, r.maxZ);                                  // юг (у стены гигантов)
+    seg(r.minX, r.minZ, r.maxX, r.minZ, [-12, 1]);                        // север, с проходом
+    seg(r.minX, r.minZ, r.minX, r.maxZ); seg(r.maxX, r.minZ, r.maxX, r.maxZ);
+    jFence = g; jungleV.root.add(g);
+  }
   function syncJungle() {
     const D = SG.D, Z0 = SG.JB.z0;
     jungleV.root.visible = D.jungleBase;
     if (!D.jungleBase) return;
+    if (jFenceL !== D.jbaseL) buildJFence(D.jbaseL);
     for (const v of jungleV.stalls) {
       const st = v.st, x = st.x, n = Math.min(40, Math.floor(st.st.stock));
       v.items.forEach((m, i) => {
@@ -888,7 +951,7 @@
     metroSign = ms.tex;
     for (const st of SG.G.stations) {
       const root = new THREE.Group(); root.position.set(st.x, 0, st.z); root.visible = false;
-      if (st.id !== 'main') root.add(mesh(GEO.box, mat('#6c6e75'), 0, 0.07, 0, 3.4, 0.14, 3.4)); // на основной базе под станцией плитка улучшения
+      root.add(mesh(GEO.box, mat('#6c6e75'), 0, 0.07, 0, 3.4, 0.14, 3.4)); // платформа станции; плитка улучшения стоит рядом
       const rails = (y) => {
         const g = new THREE.Group();
         for (const z of [-0.55, 0.55]) g.add(mesh(GEO.box, steel, 0, y + 0.1, z, 7, 0.1, 0.12));
@@ -1090,7 +1153,7 @@
   }
 
   // ---------- игрок и его вещи ----------
-  let player, axeMeshes = [], gunMeshes = [], ring, stacks, playerShadow, arrowG, playerRigG, playerRig;
+  let player, axeMeshes = [], gunMeshes = [], ring, stacks, playerShadow, arrowG, arrowMat, playerRigG, playerRig;
   function buildPlayer() {
     player = new THREE.Group();
     player.add(makeHuman('#2a93dc', '#f6f1e7', true));
@@ -1100,7 +1163,7 @@
     ring.renderOrder = 4; ring.rotation.x = -Math.PI / 2; scene.add(ring);
     // Маленький кружок у ног со стрелкой на базу (стрелка лежит в плоскости земли и смотрит вдоль +x группы)
     arrowG = new THREE.Group();
-    const am = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
+    const am = arrowMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
     const circ = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.2, 40), am); circ.rotation.x = -Math.PI / 2; circ.renderOrder = 4;
     const tg = new THREE.BufferGeometry();
     tg.setAttribute('position', new THREE.Float32BufferAttribute([2.75, 0, 0, 1.55, 0, 0.65, 1.55, 0, -0.65], 3));
@@ -1144,8 +1207,12 @@
       player.children[0].userData.arms.forEach(a => (a.rotation.x = -(0.9 + (phi - 0.55) * 0.8)));
     } else hideRig(playerRig);
     playerShadow.position.set(p.x, 0.06, p.z); playerShadow.visible = !p.dead && !G.ship.boarded;
-    const bd = G.bounds, adx = (bd.minX + bd.maxX) / 2 - p.x, adz = (bd.minZ + bd.maxZ) / 2 - p.z;
-    arrowG.visible = !p.dead && !G.inBase(p.x, p.z, 1); // на самой базе стрелка не нужна
+    // Стрелка показывает на базу того биома, где стоит герой, и красится в цвет биома (жёлтая — дом, голубая — море, оранжевая — джунгли)
+    const bio = G.biomeAt(p.x, p.z), bd = G.bounds;
+    const tgt = bio === 'main' ? { x: (bd.minX + bd.maxX) / 2, z: (bd.minZ + bd.maxZ) / 2 } : SG.BASES[bio];
+    const adx = tgt.x - p.x, adz = tgt.z - p.z;
+    arrowMat.color.setHex(SG.ARROW_COLORS[bio]);
+    arrowG.visible = !p.dead && (bio === 'main' ? !G.inBase(p.x, p.z, 1) : Math.hypot(adx, adz) > 10); // у самой базы стрелка не нужна
     arrowG.position.set(p.x, 0.22, p.z); arrowG.rotation.y = Math.atan2(-adz, adx);
     ring.visible = !p.dead && !G.fishMode && !p.ride; ring.position.set(p.x, 0.2, p.z); ring.scale.set(D.axeR, D.axeR, D.axeR);
     if (lastTier !== D.tier) {
@@ -1194,7 +1261,7 @@
   }
 
   // ---------- пулы и динамические объекты ----------
-  const maps = { bears: new Map(), workers: new Map(), collectors: new Map(), miners: new Map(), fishers: new Map(), customers: new Map(), turrets: new Map() };
+  const maps = { bears: new Map(), hunters: new Map(), workers: new Map(), collectors: new Map(), miners: new Map(), fishers: new Map(), customers: new Map(), turrets: new Map() };
   let dropPool = [], shotPool = [], gunShotPool = [], DROP;
   function buildPools() {
     for (const b of SG.G.bears) {
@@ -1255,6 +1322,17 @@
       if (!v) { v = make(it); map.set(it, v); }
       upd(it, v);
     }
+  }
+  function syncHunters() {
+    const t = SG.G.t;
+    syncMap(maps.hunters, SG.G.hunters, h => {
+      const m = makeHunter(), g = new THREE.Group(); g.add(m); g.userData = { h: m }; scene.add(g); return g;
+    }, (h, g) => {
+      g.position.set(h.x, 0, h.z); g.rotation.y = h.face;
+      const m = g.userData.h; animHuman(m, h.walk, t + h.x);
+      // рубит мачете сверху вниз, иначе держит клинок перед собой
+      m.userData.arms[1].rotation.x = h.swing > 0 ? -2.3 + (1 - h.swing) * 2.9 : -0.55 + (h.walk ? Math.sin((t + h.x) * 14) * 0.15 : 0);
+    });
   }
   function syncWorkers() {
     const t = SG.G.t;
@@ -1337,7 +1415,7 @@
   // ---------- кадр ----------
   R.frame = function (dt) {
     const G = SG.G, p = G.p;
-    syncTrees(); syncGiants(); syncPalms(); syncOres(); syncPlayer(dt); syncBears(); syncWorkers(); syncCollectors(); syncMiners(); syncFishers(); syncFish(); syncFishFx(); syncJungle(); syncStations(); syncShip(); syncSea(); syncSad(); syncCustomers(); syncTurrets(); syncDropsShots(); syncStalls();
+    syncTrees(); syncGiants(); syncPalms(); syncOres(); syncPlayer(dt); syncBears(); syncWorkers(); syncHunters(); syncCollectors(); syncMiners(); syncFishers(); syncFish(); syncFishFx(); syncJungle(); syncStations(); syncShip(); syncSea(); syncSad(); syncCustomers(); syncTurrets(); syncDropsShots(); syncStalls();
     for (const v of padV) drawPad(v);
     flames.forEach((f, i) => { f.scale.y = f.userData.h * (1 + Math.sin(G.t * (12 + i * 3) + i) * 0.12); });
     // камера плавно едет за игроком

@@ -37,7 +37,7 @@
       joy.dx = dx / M; joy.dy = dy / M;
       knob.style.transform = 'translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px))';
     });
-    const end = () => { joy = null; stick.style.display = 'none'; if (UI.rail) UI.railEnd(true); }; // отпустил, не выбрав — отмена
+    const end = () => { joy = null; stick.style.display = 'none'; if (UI.rail) UI.railRelease(); }; // отпустил: поехал, если область выбрана, иначе отмена
     addEventListener('pointerup', end); addEventListener('pointercancel', end);
     addEventListener('keydown', e => {
       const k = e.key.toLowerCase();
@@ -51,7 +51,7 @@
       if (DIRK.indexOf(k) >= 0 && !keys[k] && !anyDir() && !joy) UI.railBegin(); // первое нажатие стрелки на станции
       keys[k] = 1; if (k === 'e') SG.G.eat();
     });
-    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (UI.rail && !anyDir() && !joy) UI.railEnd(true); });
+    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (UI.rail && !anyDir() && !joy) UI.railRelease(); });
 
     $('eat').onclick = () => SG.G.eat();
     $('railcancel').onclick = () => UI.railEnd(true);
@@ -123,9 +123,10 @@
         ['Размер базы', 2 * SG.baseHalf(D.baseL) + ' × ' + (SG.baseHalf(D.baseL) + 14)], ['Башен построено', built + ' / ' + SG.TURRETS.length], ['Урон башен', SG.fmt(D.tDmg)], ['Дальность башен', D.tRange.toFixed(0) + ' м'], null,
         ['Продано дров', SG.fmt(st.soldwood)], ['Продано мяса', SG.fmt(st.soldmeat)], ['Продано золота', SG.fmt(st.soldgold)], ['Покупателей обслужено', SG.fmt(st.customers)], ['Множитель цен', '×' + D.priceMul.toFixed(1)], null,
         ['Срублено деревьев (ты / рабочие)', SG.fmt(st.trees) + ' / ' + SG.fmt(st.wtrees)], ['Добыто золотой руды', SG.fmt(st.ores)], ['Побеждено мобов', SG.fmt(st.kills)], ['Из них боссов', SG.fmt(st.boss)], ['«' + SG.VERITE_NAME + '» повержено', SG.fmt(st.verite)],
-        ['Дробовик', D.gunOwned ? D.gunCount + ' шт., урон ' + SG.fmt(D.gunDmg) + ', дальность ' + D.gunRange.toFixed(0) + ' м' : 'нет'], ['Джунгли-база', D.jungleBase ? 'построена' : 'нет'],
+        ['Дробовик', D.gunOwned ? D.gunCount + ' шт., урон ' + SG.fmt(D.gunDmg) + ', дальность ' + D.gunRange.toFixed(0) + ' м' : 'нет'], ['Джунгли-база', D.jungleBase ? 'ур. ' + D.jbaseL + ' • охотников до ' + D.hunterCap : 'нет'],
         ['Обезьян побеждено / пальм срублено', SG.fmt(st.monk) + ' / ' + SG.fmt(st.palms)], ['Бананов собрано', SG.fmt(st.banana)], ['Продано пальмового дерева / бананов', SG.fmt(st.soldjwood) + ' / ' + SG.fmt(st.soldbanana)],
         ['«' + SG.CURIO_NAME + '» повержено', SG.fmt(st.curio)], ['«' + SG.SAD_NAME + '» повержено', SG.fmt(st.grust)],
+        ['Охотники с мачете', D.hunters + ' шт., урон ' + SG.fmt(D.mDmg) + ' • убито ' + SG.fmt(st.hmonk)],
         ['Железная дорога', SG.RAIL.names[D.railLvl] + (D.railLvl ? ' • поездок ' + SG.fmt(st.rides) : '')], null,
         ['Смертей', SG.fmt(st.deaths)], ['Съедено мяса', SG.fmt(st.eaten)]
       ];
@@ -259,7 +260,8 @@
       if (Math.abs(d) < min) { const k = (min - Math.abs(d)) / 2, sg = Math.sign(d) || 1; opts[0].ang -= sg * k; opts[1].ang += sg * k; }
     }
     if (!opts.length) return;
-    UI.rail = { opts };
+    const hint = document.createElement('div'); hint.className = 'rhint'; $('railsel').appendChild(hint);
+    UI.rail = { opts, pick: null, hint };
     $('railsel').style.display = 'block'; $('railcancel').style.display = 'block';
   };
   UI.railEnd = function (cancel) {
@@ -267,6 +269,12 @@
     UI.rail = null;
     $('railsel').textContent = ''; $('railsel').style.display = 'none'; $('railcancel').style.display = 'none';
     if (cancel) SG.G.stArmed = false;
+  };
+  // Отпустил джойстик: если была выбрана область — едем, иначе это отмена
+  UI.railRelease = function () {
+    const R = UI.rail;
+    if (!R) return;
+    if (R.pick && SG.G.startRide(R.pick.st.id)) UI.railEnd(false); else UI.railEnd(true);
   };
   function railTick(jx, jy) {
     const R = UI.rail, p = SG.G.p;
@@ -279,7 +287,11 @@
       o.el.style.left = x + 'px'; o.el.style.top = y + 'px';
       o.el.classList.toggle('on', ok && o === pick);
     }
-    if (ok && l > 0.6 && SG.G.startRide(pick.st.id)) UI.railEnd(false);
+    // Едем только после того, как отпустишь джойстик: пока держишь, выбор можно менять (в центр — «никуда»)
+    R.pick = ok ? pick : null;
+    const txt = R.pick ? 'Отпусти — поедешь: ' + R.pick.st.name : 'Веди в нужную область и отпусти — поедешь. В центр или «Отмена» — остаться';
+    if (R.hint.textContent !== txt) R.hint.textContent = txt;
+    R.hint.style.left = Math.max(150, Math.min(innerWidth - 150, c.x)) + 'px'; R.hint.style.top = Math.max(40, c.y - 150) + 'px';
   }
 
   // Вектор движения в мировых координатах. Камера смотрит в сторону (-1,-1), поэтому «вверх» на экране = (-x,-z).

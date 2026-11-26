@@ -15,7 +15,7 @@
     nick: '', quality: 'high', tipClosed: false,
     earned: 0, // всего заработано с продаж — очки таблицы лидеров, только растёт
     // счётчики для раздела «Статистика» (ключи — маленькими латинскими буквами, их же проверяет сервер)
-    stats: { time: 0, trees: 0, wtrees: 0, ores: 0, kills: 0, boss: 0, verite: 0, deaths: 0, eaten: 0, spent: 0, customers: 0, cmeat: 0, mgold: 0, soldwood: 0, soldmeat: 0, soldgold: 0, giants: 0, fish: 0, soldfish: 0, cfish: 0, hfish: 0, monk: 0, curio: 0, grust: 0, palms: 0, banana: 0, soldjwood: 0, soldbanana: 0, rides: 0 }
+    stats: { time: 0, trees: 0, wtrees: 0, ores: 0, kills: 0, boss: 0, verite: 0, deaths: 0, eaten: 0, spent: 0, customers: 0, cmeat: 0, mgold: 0, soldwood: 0, soldmeat: 0, soldgold: 0, giants: 0, fish: 0, soldfish: 0, cfish: 0, hfish: 0, monk: 0, curio: 0, grust: 0, palms: 0, banana: 0, soldjwood: 0, soldbanana: 0, rides: 0, hmonk: 0 }
   });
   SG.lv = id => SG.S.lv[id] || 0;
   SG.total = () => SG.S.wood + SG.S.meat + SG.S.gold;
@@ -70,6 +70,12 @@
     D.gunInt = F.gInt(l('grate'));
     D.gunCount = F.gCount(l('gcount'));
     D.gunRange = F.gRange(l('gdmg'));
+    D.hunters = l('jhire');
+    D.jbaseL = l('jup');                    // уровень базы в джунглях
+    D.jPrice = 1 + 0.2 * D.jbaseL;          // цены джунглевых лавок
+    D.jCust = 1 + 0.25 * D.jbaseL;          // частота покупателей там
+    D.hunterCap = 2 + 2 * D.jbaseL;         // сколько охотников можно нанять
+    D.mDmg = F.mDmg(l('jhdmg'));
     D.railLvl = l('rail');
     D.stFish = l('railf') > 0;
     D.stJungle = l('railj') > 0;

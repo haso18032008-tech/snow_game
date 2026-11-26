@@ -26,8 +26,8 @@
     { hp: 15000, spd: 8.5, dmg: [0, 0], meat: [0, 0], scale: 1.2, aggro: 0, jungle: true, loot: [50, 80] }
   ];
   const VERITE = 4, MONKEY = 5, GORILLA = 6, CURIO = 7;
-  const JUNGLE_COUNTS = [16, 3];   // обезьян и горилл
-  const PALM_HP = 20, PALM_COUNT = 450, SAD_HP = 2500;
+  const JUNGLE_COUNTS = [32, 6];   // обезьян и горилл
+  const PALM_HP = 20, PALM_COUNT = 1100, SAD_HP = 2500;
   const BEAR_COUNTS = [14, 8, 5, 2];
   SG.KINDS = KINDS;
   const TREE_HP = 20, ORE_HP = 150, ORE_NEED_LVL = 3;
@@ -193,7 +193,7 @@
     G.p = { x: SG.SPAWN[0], z: SG.SPAWN[1], face: 0, walk: false, dead: false, hurt: 0, axeAng: 0, swing: 0, hp: Math.min(S.hp > 0 ? S.hp : D.maxHp, D.maxHp) };
     G.fire = { x: -12, z: 8.5 };
     G.trees = []; G.ores = []; G.bears = []; G.workers = []; G.customers = [];
-    G.palms = []; G.guns = []; G.gshots = []; G.gunCd = []; G.gunFl = []; G.onStation = null; G.stArmed = false;
+    G.palms = []; G.hunters = []; G.guns = []; G.gshots = []; G.gunCd = []; G.gunFl = []; G.onStation = null; G.stArmed = false;
     G.sad = { kind: 'sad', x: 0, z: 0, s: 1.6, hp: SAD_HP, max: SAD_HP, dead: true, under: false, respawn: rnd(60, 120), t: 0, life: 0, flash: 0, a: 0, ph: 0 };
     G.stations = [
       Object.assign({ id: 'main', name: 'Дом', icon: 'castle', ok: () => SG.D.railLvl > 0 }, SG.RAIL.main),
@@ -311,11 +311,27 @@
       for (let k = G.giants.length - 1; k >= G.jgStart && ok; k--) { const g = G.giants[k]; if (g.z < SG.JUNGLE.z - 6 && (g.x - x) ** 2 + (g.z - z) ** 2 < 49) ok = false; }
       if (ok) { addJ(x, z); nj++; }
     }
+    // Расширение мира на север: восточная стена продолжается до нового края, плюс одиночные гиганты в новой полосе.
+    // Свой генератор и добавление в самый конец — индексы всего, что было раньше, не меняются.
+    const RJ2 = seeded(20261127), rk = (a, b) => a + RJ2() * (b - a);
+    for (const wx of [SG.WALL_X, SG.WALL_X + 3.4]) {
+      for (let z = SG.JUNGLE.zMin + 1.5; z < -SG.HALF + 1.4; z += 3) addJ(wx + rk(-0.3, 0.3), z + rk(-0.2, 0.2));
+    }
+    let nk = 0, tk = 0;
+    while (nk < 80 && tk++ < 3000) {
+      const x = rk(-SG.HALF + 6, SG.JUNGLE.x1 - 6), z = rk(SG.JUNGLE.zMin + 6, -SG.HALF + 2);
+      if (inJClearing(x, z, 6)) continue;
+      let ok = true;
+      for (let k = G.giants.length - 1; k >= G.jgStart && ok; k--) { const g = G.giants[k]; if (g.z < SG.JUNGLE.z - 6 && (g.x - x) ** 2 + (g.z - z) ** 2 < 49) ok = false; }
+      if (ok) { addJ(x, z); nk++; }
+    }
     for (const i of SG.S.cut) if (G.giants[i]) { G.giants[i].hp = 0; G.giants[i].dirty = true; }
   }
 
   // Поляна джунглевой базы: тут не растут деревья и не ходят мобы
-  const inJClearing = (x, z, m) => x > -20 - m && x < 24 + m && z > -152 - m && z < -122 + m;
+  // Поляна — по самой большой ограде (уровень 4): растения и мобы туда не лезут, чтобы база могла расти
+  const JR4 = SG.jbRect(4);
+  const inJClearing = (x, z, m) => x > JR4.minX - m && x < JR4.maxX + m && z > JR4.minZ - m && z < JR4.maxZ + m;
   function genPalms() {
     const cell = 3.4, grid = new Map();
     const key = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
@@ -328,8 +344,8 @@
       return false;
     };
     let tries = 0;
-    while (G.palms.length < PALM_COUNT && tries++ < 40000) {
-      const x = rnd(-SG.HALF + 3, SG.JUNGLE.x1 - 2), z = rnd(-SG.HALF + 3, SG.JUNGLE.z - 8);
+    while (G.palms.length < PALM_COUNT && tries++ < 90000) {
+      const x = rnd(-SG.HALF + 3, SG.JUNGLE.x1 - 2), z = rnd(SG.JUNGLE.zMin + 3, SG.JUNGLE.z - 8);
       if (inJClearing(x, z, 3) || near(x, z)) continue;
       let hit = false;
       for (let k = G.jgStart; k < G.giants.length && !hit; k++) { const g = G.giants[k]; if ((g.x - x) ** 2 + (g.z - z) ** 2 < 9) hit = true; }
@@ -361,15 +377,15 @@
       G.ores.push({ i, x, z, hp: ORE_HP, max: ORE_HP, respawn: 0, hitT: 0, shake: 0, dirty: true, claim: null });
     }
   }
-  const jungleClear = (x, z) => inJClearing(x, z, 8) || (x > -28 && x < 32 && z > -158);
+  const jungleClear = (x, z) => inJClearing(x, z, 6);
   function bearPos(kind) {
     const K = KINDS[kind], J = SG.JUNGLE;
     if (K.jungle) {
       for (let n = 0; n < 60; n++) {
-        const x = rnd(-SG.HALF + 6, J.x1 - 6), z = rnd(-SG.HALF + 6, J.z - 12);
+        const x = rnd(-SG.HALF + 6, J.x1 - 6), z = rnd(J.zMin + 6, J.z - 12);
         if (!jungleClear(x, z)) return [x, z];
       }
-      return [-60, -160];
+      return [-60, -200];
     }
     for (let n = 0; n < 60; n++) {
       const a = rnd(0, 6.28), r = rnd(K.ring[0], K.ring[1]);
@@ -409,6 +425,7 @@
   G.padVisible = function (pad) {
     const L = lvOf(pad);
     if (pad.id === 'fisher' && L >= 1 + (SG.S.lv.flen || 0)) return false; // нужно свободное место: удлини пирс
+    if (pad.id === 'jhire' && L >= SG.D.hunterCap) return false; // нужно место: расширь базу в джунглях
     if (pad.kind === 'turret') return L === 0 && SG.D.baseL >= SG.TURRETS_NEED_BASE && pad.minL <= SG.D.baseL;
     if (pad.def.max === 1 && L >= 1) return false;
     if (L > 0) return true; // купленное не прячем, даже если условие потом «сломалось»
@@ -467,6 +484,7 @@
     while (G.fishers.length < SG.D.fishers) G.fishers.push({ seat: G.fishers.length, state: 'cast', t: rnd(0, 1.2), wait: 0, thrown: false, bx: SG.FISH.bobX, bz: SG.FISH.seatZ(G.fishers.length) });
     while (G.miners.length < SG.D.miners) G.miners.push({ x: rnd(3, 5.5), z: rnd(6, 8), face: 0, walk: false, ore: null, carry: 0, t: 0, swing: 0, state: 'seek' });
     while (G.collectors.length < SG.D.collectors) G.collectors.push({ x: rnd(-2, 2), z: rnd(6, 8), face: 0, walk: false, target: null, carry: 0, state: 'seek', idle: 0 });
+    while (G.hunters.length < SG.D.hunters) G.hunters.push({ x: rnd(1, 5), z: SG.JB.z0 - rnd(0.5, 2.5), face: 0, walk: false, tgt: null, t: 0, swing: 0, state: 'seek', route: null });
     while (G.workers.length < SG.D.workers) G.workers.push({ x: rnd(-2, 2), z: rnd(2, 5), face: 0, walk: false, tree: null, carry: 0, t: 0, swing: 0, state: 'seek' });
   };
   G.syncTurrets = function () {
@@ -487,10 +505,20 @@
     p.hp = Math.min(D.maxHp, p.hp + h);
     SG.hooks.pop(p.x, p.z, '+' + Math.round(h) + ' {heart}', '#7dff8a');
   };
+  // Биом по координатам: восток (за стеной) — «fish», север (за северной стеной) — «jungle», остальное — «main»
+  G.biomeAt = (x, z) => (x > SG.WALL_X - 3 ? 'fish' : z < SG.JUNGLE.z + 3 ? 'jungle' : 'main');
+  G.inJungleBase = (x, z) => {
+    if (!SG.D.jungleBase) return false;
+    const r = SG.jbRect(SG.D.jbaseL);
+    return x > r.minX && x < r.maxX && z > r.minZ && z < r.maxZ;
+  };
+  // Герой возрождается на базе того биома, где погиб (если там база уже построена), иначе — на основной
   G.respawn = function () {
-    const p = G.p;
-    p.ride = null;
-    p.hp = SG.D.maxHp; p.x = SG.SPAWN[0]; p.z = SG.SPAWN[1]; p.dead = false;
+    const p = G.p, b = p.deadIn || 'main';
+    const ok = (b === 'fish' && SG.lv('fbase') > 0) || (b === 'jungle' && SG.D.jungleBase);
+    const sp = ok ? SG.RESPAWN[b] : SG.SPAWN;
+    p.ride = null; G.ship.boarded = false;
+    p.hp = SG.D.maxHp; p.x = sp[0]; p.z = sp[1]; p.dead = false; p.deadIn = null;
   };
   function hurtPlayer(d) {
     const p = G.p, S = SG.S;
@@ -499,7 +527,7 @@
     SG.hooks.pop(p.x, p.z, '-' + Math.round(d), '#ff5a5a');
     SG.hooks.shake();
     if (p.hp <= 0 && !p.dead) {
-      p.hp = 0; p.dead = true; S.stats.deaths++; SG.hooks.sfx('death');
+      p.hp = 0; p.dead = true; p.deadIn = G.biomeAt(p.x, p.z); S.stats.deaths++; SG.hooks.sfx('death');
       // всё, что нёс, выпадает на землю — можно вернуться и подобрать; из денег выпадает четверть
       dropStack('wood', S.wood, p.x, p.z); dropStack('meat', S.meat, p.x, p.z); dropStack('gold', S.gold, p.x, p.z); dropStack('fish', S.fish, p.x, p.z); dropStack('banana', S.banana, p.x, p.z);
       const lostCash = Math.floor(S.cash * 0.25);
@@ -527,7 +555,7 @@
       G.drops.push({ type, n, x, z, vx: Math.cos(a) * s, vz: Math.sin(a) * s, age: 0, life: 300 });
     }
   }
-  function dealBear(b, dmg, byPlayer) {
+  function dealBear(b, dmg, byPlayer, by) {
     if (b.dead) return;
     b.hp -= dmg; b.hitT = 0.3; b.flash = 0.12;
     SG.hooks.sfx(b.kind === VERITE || b.kind === CURIO ? 'boing' : 'hit', b.x, b.z);
@@ -551,10 +579,16 @@
         dropStack('banana', rint(K.loot[0], K.loot[1]), b.x, b.z);
         SG.hooks.banner('«' + SG.CURIO_NAME + '» повержен! Бананы выпали — подбирай');
       } else if (K.jungle) {
-        b.respawn = 40; S.stats.monk++;
+        b.respawn = 40; S.stats.monk++; b.hClaim = null;
         if (b.kind === GORILLA) S.stats.boss++;
-        dropStack('banana', rint(K.loot[0], K.loot[1]), b.x, b.z);
-        SG.hooks.pop(b.x, b.z, b.kind === GORILLA ? 'Горилла повержена!' : 'Победа!', '#ffd23f');
+        const n = rint(K.loot[0], K.loot[1]);
+        if (by === 'hunter') { // добыча охотника сразу уходит на банановую лавку: подбирать не нужно
+          S.stats.hmonk++; G.stalls.find(x => x.id === 'banana').st.stock += n;
+          SG.hooks.pop(b.x, b.z, '+' + n + ' {banana}', '#ffe14d');
+        } else {
+          dropStack('banana', n, b.x, b.z);
+          SG.hooks.pop(b.x, b.z, b.kind === GORILLA ? 'Горилла повержена!' : 'Победа!', '#ffd23f');
+        }
       } else {
         b.respawn = 35;
         if (b.kind === 3) S.stats.boss++;
@@ -580,6 +614,7 @@
       let heal = D.regen;
       if (hyp(p.x - G.fire.x, p.z - G.fire.z) < 7) heal += D.heal;
       else if (inBase(p.x, p.z)) heal += 3;
+      else if (G.inJungleBase(p.x, p.z)) heal += 3 + D.jbaseL;
       p.hp = Math.min(D.maxHp, p.hp + heal * dt);
       if (!p.ride) { doPads(dt); doStations(); doStalls(dt); }
       pickupDrops();
@@ -609,7 +644,7 @@
       if (o.shake > 0) { o.shake -= dt; o.dirty = true; }
       if (o.hp <= 0) { o.respawn -= dt; if (o.respawn <= 0) { o.hp = o.max; o.dirty = true; } }
     }
-    updateBears(dt); updateSadMob(dt); updateGunShots(dt); updateWorkers(dt); updateCollectors(dt); updateMiners(dt); updateFishers(dt); updateSea(dt); updateCustomers(dt); updateTurrets(dt); updateShots(dt); updateDrops(dt);
+    updateBears(dt); updateSadMob(dt); updateGunShots(dt); updateWorkers(dt); updateHunters(dt); updateCollectors(dt); updateMiners(dt); updateFishers(dt); updateSea(dt); updateCustomers(dt); updateTurrets(dt); updateShots(dt); updateDrops(dt);
   };
 
   const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
@@ -634,8 +669,8 @@
       if (!fenceBlocked(p.x, nz) && !worldBlocked(p.x, nz)) p.z = nz;
       p.face = Math.atan2(mx, mz);
     }
-    p.x = clamp(p.x, -SG.HALF + 2, SG.HALF - 2);
-    p.z = clamp(p.z, -SG.HALF + 2, SG.HALF - 2);
+    p.z = clamp(p.z, SG.JUNGLE.zMin + 2, SG.HALF - 2);
+    p.x = clamp(p.x, -SG.HALF + 2, p.z < -SG.HALF ? SG.WALL_X - 4 : SG.HALF - 2); // севернее старого края мира востока нет
   }
   // Корабль плывёт только по озеру. Как только следующий шаг выводит из воды в пределах мира — игрок сходит на берег,
   // а корабль остаётся у кромки там, где пристали.
@@ -830,8 +865,11 @@
         const room = 1e9;
         if (room >= 1) {
           const d = hyp(p.x - m.x, p.z - m.z);
-          if (d < D.magnet) { m.x += (p.x - m.x) / d * 16 * dt; m.z += (p.z - m.z) / d * 16 * dt; }
-          if (d < 1.1) {
+          // На корабле добыча улетает назад быстрее, чем плывёт судно: дальность и скорость притяжения растут
+          // вместе с прокачкой «Скорости корабля» (иначе приходится останавливаться и ждать рыбу).
+          const boat = G.ship.boarded, rng = boat ? D.magnet + D.shipSpeed * 0.6 : D.magnet, pull = boat ? Math.max(16, D.shipSpeed * 2.4) : 16;
+          if (d < rng && d > 0.001) { const st = Math.min(d, pull * dt); m.x += (p.x - m.x) / d * st; m.z += (p.z - m.z) / d * st; }
+          if (d < (boat ? 1.8 : 1.1)) {
             const k = Math.min(m.n, room);
             S[m.type === 'cash' ? 'cash' : m.type] += k; m.n -= k;
             if (m.type === 'banana') S.stats.banana += k;
@@ -873,7 +911,7 @@
       }
     } else {
       b.wt -= dt;
-      if (b.wt <= 0) { b.wt = rnd(2, 5); b.wx = clamp(b.x + rnd(-10, 10), -SG.HALF + 8, SG.HALF - 8); b.wz = clamp(b.z + rnd(-10, 10), -SG.HALF + 8, SG.HALF - 8); }
+      if (b.wt <= 0) { b.wt = rnd(2, 5); b.wx = clamp(b.x + rnd(-10, 10), -SG.HALF + 8, SG.HALF - 8); b.wz = clamp(b.z + rnd(-10, 10), (KINDS[b.kind].jungle ? SG.JUNGLE.zMin : -SG.HALF) + 8, SG.HALF - 8); }
       const ddx = b.wx - b.x, ddz = b.wz - b.z, dd = hyp(ddx, ddz);
       if (dd > 0.5) { mx = ddx / dd; mz = ddz / dd; sp = 2.5; }
     }
@@ -887,8 +925,11 @@
   function confine(b) {
     const J = SG.JUNGLE;
     if (KINDS[b.kind].jungle) {
-      b.x = clamp(b.x, -SG.HALF + 3, J.x1 - 2); b.z = clamp(b.z, -SG.HALF + 3, J.z - 8);
-      if (b.x > -28 && b.x < 32 && b.z > -158) { b.z = -158; b.wz = -158; }
+      b.x = clamp(b.x, -SG.HALF + 3, J.x1 - 2); b.z = clamp(b.z, J.zMin + 3, J.z - 8);
+      if (inJClearing(b.x, b.z, 4)) { // база и её будущая ограда — безопасная зона: выталкиваем к ближайшему краю (на север или вбок)
+        const dl = b.x - (JR4.minX - 4), dr = (JR4.maxX + 4) - b.x, dn = b.z - (JR4.minZ - 4), m = Math.min(dl, dr, dn);
+        if (m === dn) { b.z = JR4.minZ - 4; b.wz = b.z; } else if (m === dl) { b.x = JR4.minX - 4; b.wx = b.x; } else { b.x = JR4.maxX + 4; b.wx = b.x; }
+      }
     } else {
       if (b.x > SG.WALL_X - 6) b.x = b.wx = SG.WALL_X - 6;
       if (b.z < J.z + 8) b.z = b.wz = J.z + 8;
@@ -1088,6 +1129,33 @@
     }
   }
 
+  // Охотники джунглей: бегут к ближайшей обезьяне и рубят её мачете. Бананы с убитой сразу идут на банановую лавку.
+  // Горилл и «Любопытстити» не трогают — это добыча игрока. Охотников обезьяны не атакуют.
+  function updateHunters(dt) {
+    const D = SG.D, spd = 7 + 0.15 * SG.lv('jhdmg');
+    for (const h of G.hunters) {
+      h.swing = Math.max(0, h.swing - dt * 3); h.walk = false;
+      if (h.state === 'seek') {
+        let best = null, bd = 1e9;
+        for (const b of G.bears) {
+          if (b.kind !== MONKEY || b.dead || (b.hClaim && b.hClaim !== h && G.hunters.includes(b.hClaim))) continue;
+          const d = (b.x - h.x) ** 2 + (b.z - h.z) ** 2;
+          if (d < bd) { bd = d; best = b; }
+        }
+        if (best) { best.hClaim = h; h.tgt = best; h.state = 'go'; h.t = 0; }
+        else walkTo(h, 2 + (G.hunters.indexOf(h) % 5) * 1.4, SG.JB.z0 - 2.5, spd, dt); // обезьян нет — ждёт у базы
+      } else {
+        const b = h.tgt;
+        if (!b || b.dead) { if (b && b.hClaim === h) b.hClaim = null; h.tgt = null; h.state = 'seek'; continue; }
+        const d = hyp(b.x - h.x, b.z - h.z);
+        if (d > 2.0) { walkTo(h, b.x, b.z, spd, dt); continue; }
+        h.face = Math.atan2(b.x - h.x, b.z - h.z);
+        h.t += dt;
+        if (h.t >= 0.75) { h.t = 0; h.swing = 1; dealBear(b, D.mDmg, false, 'hunter'); }
+      }
+    }
+  }
+
   // Сборщики мяса: бегают за мясом, выпавшим вокруг базы, и сносят его на мясную лавку.
   // Дальше этого расстояния от базы не ходят — в дикие земли к мобам они не лезут.
   // Дальность обзора и вместимость корзины — из прокачки (D.cRange, D.cCarry), скорость умножается на D.cSpeed
@@ -1181,7 +1249,7 @@
     };
     if (G.custT <= 0) { G.custT = D.custInt * rnd(0.7, 1.3); trySpawn('main'); }
     if (G.custTF <= 0) { G.custTF = D.custInt * rnd(0.7, 1.3); trySpawn('fish'); }
-    if (G.custTJ <= 0) { G.custTJ = D.custInt * rnd(0.7, 1.3); trySpawn('jungle'); }
+    if (G.custTJ <= 0) { G.custTJ = D.custInt * rnd(0.7, 1.3) / D.jCust; trySpawn('jungle'); }
     for (let i = G.customers.length - 1; i >= 0; i--) {
       const c = G.customers[i], st = c.stall, q = st.q;
       let tx, tz, sp = 9;
@@ -1195,7 +1263,7 @@
               st.st.stock -= c.need;
               SG.hooks.sfx('coin', st.bench.x, st.bench.z);
               SG.S.stats.customers++; SG.S.stats['sold' + st.id] += c.need;
-              const pay = Math.round(c.need * st.price * D.priceMul);
+              const pay = Math.round(c.need * st.price * D.priceMul * (st.flow === 'jungle' ? D.jPrice : 1));
               st.st.cash += pay;
               G.queues[st.id].shift();
               c.state = 'out';
