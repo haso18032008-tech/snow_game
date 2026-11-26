@@ -26,6 +26,7 @@
     SG.audio.bindUI();
     const cv = $('c'), stick = $('stick'), knob = $('knob');
     cv.addEventListener('pointerdown', e => {
+      UI.railBegin(); // стоишь на взведённой станции — это нажатие открывает выбор направления
       joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 };
       stick.style.display = 'block'; stick.style.left = e.clientX + 'px'; stick.style.top = e.clientY + 'px'; knob.style.transform = 'translate(-50%,-50%)';
     });
@@ -36,7 +37,7 @@
       joy.dx = dx / M; joy.dy = dy / M;
       knob.style.transform = 'translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px))';
     });
-    const end = () => { joy = null; stick.style.display = 'none'; };
+    const end = () => { joy = null; stick.style.display = 'none'; if (UI.rail) UI.railEnd(true); }; // отпустил, не выбрав — отмена
     addEventListener('pointerup', end); addEventListener('pointercancel', end);
     addEventListener('keydown', e => {
       const k = e.key.toLowerCase();
@@ -47,11 +48,13 @@
         return;
       }
       if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (DIRK.indexOf(k) >= 0 && !keys[k] && !anyDir() && !joy) UI.railBegin(); // первое нажатие стрелки на станции
       keys[k] = 1; if (k === 'e') SG.G.eat();
     });
-    addEventListener('keyup', e => (keys[e.key.toLowerCase()] = 0));
+    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; if (UI.rail && !anyDir() && !joy) UI.railEnd(true); });
 
     $('eat').onclick = () => SG.G.eat();
+    $('railcancel').onclick = () => UI.railEnd(true);
     $('resp').onclick = () => { SG.G.respawn(); $('dead').style.display = 'none'; };
 
     // подсказка с крестиком
@@ -120,6 +123,10 @@
         ['Размер базы', 2 * SG.baseHalf(D.baseL) + ' × ' + (SG.baseHalf(D.baseL) + 14)], ['Башен построено', built + ' / ' + SG.TURRETS.length], ['Урон башен', SG.fmt(D.tDmg)], ['Дальность башен', D.tRange.toFixed(0) + ' м'], null,
         ['Продано дров', SG.fmt(st.soldwood)], ['Продано мяса', SG.fmt(st.soldmeat)], ['Продано золота', SG.fmt(st.soldgold)], ['Покупателей обслужено', SG.fmt(st.customers)], ['Множитель цен', '×' + D.priceMul.toFixed(1)], null,
         ['Срублено деревьев (ты / рабочие)', SG.fmt(st.trees) + ' / ' + SG.fmt(st.wtrees)], ['Добыто золотой руды', SG.fmt(st.ores)], ['Побеждено мобов', SG.fmt(st.kills)], ['Из них боссов', SG.fmt(st.boss)], ['«' + SG.VERITE_NAME + '» повержено', SG.fmt(st.verite)],
+        ['Дробовик', D.gunOwned ? D.gunCount + ' шт., урон ' + SG.fmt(D.gunDmg) + ', дальность ' + D.gunRange.toFixed(0) + ' м' : 'нет'], ['Джунгли-база', D.jungleBase ? 'построена' : 'нет'],
+        ['Обезьян побеждено / пальм срублено', SG.fmt(st.monk) + ' / ' + SG.fmt(st.palms)], ['Бананов собрано', SG.fmt(st.banana)], ['Продано пальмового дерева / бананов', SG.fmt(st.soldjwood) + ' / ' + SG.fmt(st.soldbanana)],
+        ['«' + SG.CURIO_NAME + '» повержено', SG.fmt(st.curio)], ['«' + SG.SAD_NAME + '» повержено', SG.fmt(st.grust)],
+        ['Железная дорога', SG.RAIL.names[D.railLvl] + (D.railLvl ? ' • поездок ' + SG.fmt(st.rides) : '')], null,
         ['Смертей', SG.fmt(st.deaths)], ['Съедено мяса', SG.fmt(st.eaten)]
       ];
     }
@@ -200,6 +207,7 @@
 
     // Esc: закрывает верхнее окно или делает шаг назад. Возвращает true, если что-то закрыл.
     UI.back = () => {
+      if (UI.rail) { UI.railEnd(true); return true; }
       if (lbOpen()) { if (lbView === 'player') lbBack.onclick(); else lb.style.display = 'none'; return true; }
       if (modal.style.display === 'flex') { modal.style.display = 'none'; return true; }
       if ($('tip').style.display !== 'none' && !SG.S.tipClosed) { closeTip(); return true; } // крестик подсказки
@@ -221,8 +229,58 @@
     SG.hooks.shake = () => { SG.R.shakeT = 0.3; };
     SG.hooks.dead = () => { joy = null; $('dead').style.display = 'flex'; };
     SG.hooks.changed = () => { SG.R.rebuildBase(); };
+    // метро: экран темнеет, пока едем под землёй
+    SG.hooks.ride = (lvl, on) => { $('fade').style.opacity = on && lvl >= 3 ? '1' : '0'; };
     if (SG.cloud.note) SG.hooks.banner('Загружен прогресс с сервера');
   };
+
+  const DIRK = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
+  const anyDir = () => DIRK.some(k => keys[k]);
+  const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+
+  // ---------- выбор, куда ехать ----------
+  // Станция «взведена», пока ты на ней стоишь. Отпустил джойстик и нажал снова — вокруг героя появляются области
+  // (по направлению на нужное место). Повёл в область — поехал. Отпустил или нажал «Отмена» — отменил, и станция
+  // «разряжается» до тех пор, пока не сойдёшь с неё и не встанешь снова.
+  UI.rail = null;
+  UI.railBegin = function () {
+    const G = SG.G, p = G.p;
+    if (UI.rail || !G.onStation || !G.stArmed || p.dead || p.ride) return;
+    const r = Math.SQRT1_2, st = G.onStation;
+    const opts = G.railTargets().map(t => {
+      const dx = t.x - st.x, dz = t.z - st.z; // направление на экране: вправо (dx - dz), вниз (dx + dz)
+      const el = document.createElement('div'); el.className = 'rdest';
+      el.appendChild(SG.iconImg(t.icon)); const nm = document.createElement('span'); nm.textContent = t.name; el.appendChild(nm);
+      $('railsel').appendChild(el);
+      return { st: t, ang: Math.atan2((dx + dz) * r, (dx - dz) * r), el };
+    });
+    if (opts.length === 2) { // две области рядом на экране разводим, чтобы в них можно было целиться
+      const d = angDiff(opts[0].ang, opts[1].ang), min = 1.4;
+      if (Math.abs(d) < min) { const k = (min - Math.abs(d)) / 2, sg = Math.sign(d) || 1; opts[0].ang -= sg * k; opts[1].ang += sg * k; }
+    }
+    if (!opts.length) return;
+    UI.rail = { opts };
+    $('railsel').style.display = 'block'; $('railcancel').style.display = 'block';
+  };
+  UI.railEnd = function (cancel) {
+    if (!UI.rail) return;
+    UI.rail = null;
+    $('railsel').textContent = ''; $('railsel').style.display = 'none'; $('railcancel').style.display = 'none';
+    if (cancel) SG.G.stArmed = false;
+  };
+  function railTick(jx, jy) {
+    const R = UI.rail, p = SG.G.p;
+    if (p.dead || p.ride || !SG.G.onStation) { UI.railEnd(false); return; }
+    const c = SG.R.project(p.x, 1.0, p.z), l = Math.hypot(jx, jy);
+    const pick = l > 0.35 ? R.opts.reduce((b, o) => (Math.abs(angDiff(Math.atan2(jy, jx), o.ang)) < Math.abs(angDiff(Math.atan2(jy, jx), b.ang)) ? o : b)) : null;
+    const ok = pick && Math.abs(angDiff(Math.atan2(jy, jx), pick.ang)) < 0.75;
+    for (const o of R.opts) {
+      const x = Math.max(60, Math.min(innerWidth - 60, c.x + Math.cos(o.ang) * 105)), y = Math.max(60, Math.min(innerHeight - 60, c.y + Math.sin(o.ang) * 105));
+      o.el.style.left = x + 'px'; o.el.style.top = y + 'px';
+      o.el.classList.toggle('on', ok && o === pick);
+    }
+    if (ok && l > 0.6 && SG.G.startRide(pick.st.id)) UI.railEnd(false);
+  }
 
   // Вектор движения в мировых координатах. Камера смотрит в сторону (-1,-1), поэтому «вверх» на экране = (-x,-z).
   UI.input = function () {
@@ -230,6 +288,7 @@
     if (joy) { jx = joy.dx; jy = joy.dy; }
     if (keys.a || keys.arrowleft) jx -= 1; if (keys.d || keys.arrowright) jx += 1;
     if (keys.w || keys.arrowup) jy -= 1; if (keys.s || keys.arrowdown) jy += 1;
+    if (UI.rail) { railTick(jx, jy); return { mx: 0, mz: 0 }; } // пока выбираешь станцию, герой стоит
     const r = Math.SQRT1_2;
     return { mx: (jx + jy) * r, mz: (jy - jx) * r };
   };
@@ -247,6 +306,9 @@
     const S = SG.S, D = SG.D, p = SG.G.p;
     set('cash', SG.fmt(S.cash));
     set('wood', SG.fmt(S.wood), 'num');
+    const bn = $('bananarow'), bshow = S.banana > 0 || D.jungleBase;
+    if (last.bn !== bshow) { bn.style.display = bshow ? 'flex' : 'none'; last.bn = bshow; }
+    set('banana', SG.fmt(S.banana), 'num');
     const fm = SG.G.fishMode; // на пирсе и на корабле вместо мяса показываем рыбу
     set('meat', SG.fmt(fm ? S.fish : S.meat), 'num');
     seticon('meatic', fm ? 'fish' : 'meat');
@@ -257,11 +319,16 @@
     set('axename', fm === 'ship' ? 'Гарпун • ур. ' + (SG.lv('hdmg') + 1) : fm === 'rod' ? 'Удочка • ур. ' + SG.lv('rod') : SG.TIERS[D.tier].n + ' топор • ур. ' + (D.axeLvl + 1));
     seticon('axeic', fm === 'ship' ? 'harpoon' : fm === 'rod' ? 'rod' : 'axe');
     set('nickname', S.nick || 'Выживший');
-    $('eat').disabled = S.meat <= 0 || p.hp >= D.maxHp || p.dead;
+    $('eat').disabled = (S.meat <= 0 && S.banana <= 0) || p.hp >= D.maxHp || p.dead;
     // подсказка: что делает плитка, на которой стоишь
     const pad = SG.G.onPad, info = $('info');
-    if (!pad || p.dead) { if (last.info !== '') { info.style.display = 'none'; last.info = ''; } return; }
-    const d = pad.def, L = S.lv[pad.id] || 0, G = SG.G;
+    const G = SG.G, hint = G.onStation && G.stArmed && !UI.rail && !p.dead && !p.ride ? 'отпусти джойстик и нажми снова — выберешь, куда ехать' : '';
+    if (!pad || p.dead) {
+      if (hint) { const th = '{rail} Станция: ' + hint; if (last.info !== th) { richInto(info, th); info.style.display = 'block'; last.info = th; } return; }
+      if (last.info !== '') { info.style.display = 'none'; last.info = ''; }
+      return;
+    }
+    const d = pad.def, L = S.lv[pad.id] || 0;
     let t;
     if (pad.kind === 'turret') t = '{bow} Башня: сама стреляет по мобам • ' + SG.fmt(G.padCost(pad)) + ' $ + ' + SG.fmt(G.padWood(pad)) + ' {log}';
     else if (G.padMaxed(pad)) t = '{' + d.icon + '} ' + d.name + ': максимум (' + d.val(L) + ')';
@@ -270,8 +337,12 @@
       if (pad.id === 'base') t += ' • +2 места под башни • нужно ' + SG.fmt(G.padWood(pad)) + ' {log}';
       if (pad.id === 'goldstall') t = '{gold} Лавка золота: открыть продажу золота';
       if (pad.id === 'ship') t = '{ship} Корабль: заходи в воду у пирса и охоться на большую рыбу гарпуном';
+      if (pad.id === 'jbase') t = '{palm} Джунгли-база: построить за северной стеной • ' + SG.fmt(G.padWood(pad)) + ' {log}';
+      if (pad.id === 'gun') t = '{gun} Дробовик: кружит вокруг героя и сам стреляет по мобам';
+      if (pad.id === 'railf' || pad.id === 'railj') t = '{rail} Станция: построить, чтобы ездить сюда и отсюда';
       if (pad.id === 'fbase') t = '{fish} Рыбацкая база: построить на берегу • ' + SG.fmt(G.padWood(pad)) + ' {log}';
     }
+    if (pad.id === 'rail' && hint) t += ' • ' + hint;
     if (last.info !== t) { richInto(info, t); info.style.display = 'block'; last.info = t; }
   };
 })();

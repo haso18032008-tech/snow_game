@@ -73,14 +73,14 @@ def clean_state(data):
     if not isinstance(data, dict):
         raise ValueError("data")
     out = {"v": 3}
-    for k in ("cash", "wood", "meat", "gold", "fish", "hp", "earned"):
+    for k in ("cash", "wood", "meat", "gold", "fish", "banana", "hp", "earned"):
         out[k] = _num(data.get(k))
     out["lv"] = {k: int(v) for k, v in _num_map(data.get("lv"), 100).items()}
     out["prog"] = _num_map(data.get("prog"), 1e15)
     out["stats"] = _num_map(data.get("stats"), 1e15)
     stall = data.get("stall") if isinstance(data.get("stall"), dict) else {}
     out["stall"] = {}
-    for sid in ("wood", "meat", "gold", "fish"):
+    for sid in ("wood", "meat", "gold", "fish", "jwood", "banana"):
         s = stall.get(sid) if isinstance(stall.get(sid), dict) else {}
         out["stall"][sid] = {"stock": _num(s.get("stock")), "cash": _num(s.get("cash"))}
     cut = data.get("cut") if isinstance(data.get("cut"), list) else []

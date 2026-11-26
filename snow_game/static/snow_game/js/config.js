@@ -28,11 +28,31 @@
   ].map(t => ({ n: t[0], c: t[1] }));
 
   SG.VERITE_NAME = 'Верите';           // имя редкого моба (жёлтый смайлик) — меняется в одном месте
+  SG.SAD_NAME = 'Грустити';            // редкий моб моря (фиолетовый шар): вынырнул, нырнул, награда — рыба
+  SG.CURIO_NAME = 'Любопытстити';      // редкий моб джунглей (салатовый шар): сам подходит к игроку
   SG.HALF = 190;                       // половина стороны мира
   // Восточный (на экране — справа снизу) зимний биом с озером. Его отделяет стена гигантских деревьев:
   // топор ниже «ур. 25» их не берёт, так что в начале игры туда не попасть. Звери за стену не заходят.
   SG.WALL_X = 118;                     // x первого ряда гигантских деревьев
   SG.GIANT_NEED_LVL = 24;              // уровень топора (с нуля), с которого гиганты рубятся — это «ур. 25» на экране
+  // Северный джунглевый биом (на экране — справа сверху). Отделён стеной тропических гигантов вдоль z = JUNGLE.z
+  // (два ряда, северная сторона — джунгли). Топор ниже «ур. 28» их не берёт. Обезьяны за стену не выходят, а
+  // обычные звери в джунгли не заходят. x1 — восточная граница джунглей (дальше зимняя стена).
+  SG.JUNGLE = { z: -118, x1: SG.WALL_X - 6 };
+  SG.JUNGLE_NEED_LVL = 27;             // уровень топора (с нуля) → «ур. 28» на экране
+  SG.JB = { z0: -131 };                // джунглевая база: ряд лавок стоит вдоль z0, покупатели приходят с севера
+  SG.JSTALLS = [
+    { id: 'jwood', res: 'wood', name: 'Пальмовое дерево', icon: 'log', x: -9, price: 5 },
+    { id: 'banana', res: 'banana', name: 'Бананы', icon: 'banana', x: -2, price: 25 }
+  ];
+  // Железная дорога. Станции: на основной базе, на рыбацком берегу и в джунглях; land — куда выходишь из вагона.
+  // speed — скорость поезда (м/с) на уровнях «Дрезина», «Поезд», «Метро» (под землёй).
+  SG.RAIL = {
+    speed: [34, 70, 160], names: ['нет', 'Дрезина', 'Поезд', 'Метро'],
+    main: { x: -12.2, z: -5.4, land: [-9.2, -4.4] },
+    fish: { x: 139, z: 41.2, land: [139, 44.8] },
+    jungle: { x: 6, z: -134.5, land: [6, -138.2] }
+  };
   SG.LAKE = { x: 150, z0: -70, z1: 110 }; // вода: x > LAKE.x в пределах z0..z1
   // Рыбацкая база на берегу. Настил идёт вдоль берега (по z): на севере прилавок, к югу — места рыбаков.
   // Каждый уровень «Длины пирса» удлиняет настил и добавляет место (k = 0..3).
@@ -94,7 +114,11 @@
     demand: L => 3 + L,
     queue: L => 4 + L,
     heal: L => 8 + 3 * L,
-    price: L => 1 + 0.2 * L
+    price: L => 1 + 0.2 * L,
+    gDmg: L => 1200 * Math.pow(1.22, L),     // урон дробовика (за выстрел, три дробины)
+    gInt: L => 1.3 / (1 + 0.1 * L),          // пауза между выстрелами одного ствола
+    gCount: L => Math.min(6, 1 + L),         // сколько дробовиков кружит вокруг героя
+    gRange: L => 16 + 0.4 * L
   });
   const f = SG.fmt;
 
@@ -119,6 +143,15 @@
     { id: 'hdmg', name: 'Урон гарпуна', icon: 'harpoon', row: 0, col: 0, max: 25, base: 3000, mult: 1.3, val: L => f(F.hDmg(L)) },
     { id: 'hrate', name: 'Скорость гарпуна', icon: 'bolt', row: 0, col: 0, max: 15, base: 3500, mult: 1.4, val: L => F.hInt(L).toFixed(2) + ' с' },
     { id: 'sspeed', name: 'Скорость корабля', icon: 'boot', row: 0, col: 0, max: 15, base: 2500, mult: 1.4, val: L => F.sSpeed(L).toFixed(1) },
+    // джунгли: база за стеной, дробовик и железная дорога
+    { id: 'jbase', name: 'Джунгли-база', icon: 'palm', row: 0, col: 0, max: 1, base: 600000, mult: 1, wood: [800, 1], val: () => 'Построить' },
+    { id: 'gun', name: 'Дробовик', icon: 'gun', row: 0, col: 0, max: 1, base: 400000, mult: 1, val: () => 'Купить' },
+    { id: 'gdmg', name: 'Урон дробовика', icon: 'gun', row: 0, col: 0, max: 25, base: 8000, mult: 1.3, val: L => f(F.gDmg(L)) },
+    { id: 'grate', name: 'Скорость дробовика', icon: 'bolt', row: 0, col: 0, max: 15, base: 9000, mult: 1.4, val: L => F.gInt(L).toFixed(2) + ' с' },
+    { id: 'gcount', name: 'Число дробовиков', icon: 'gun', row: 0, col: 0, max: 5, base: 30000, mult: 2.2, val: L => F.gCount(L) + ' шт.' },
+    { id: 'rail', name: 'Железная дорога', icon: 'rail', row: 0, col: 0, max: 3, base: 500000, mult: 2.5, val: L => SG.RAIL.names[L] },
+    { id: 'railf', name: 'Станция у моря', icon: 'rail', row: 0, col: 0, max: 1, base: 120000, mult: 1, val: () => 'Построить' },
+    { id: 'railj', name: 'Станция в джунглях', icon: 'rail', row: 0, col: 0, max: 1, base: 120000, mult: 1, val: () => 'Построить' },
     { id: 'wspeed', name: 'Темп работы', icon: 'bolt', row: 1, col: 1, max: 20, base: 35, mult: 1.4, val: L => '×' + F.wSpeed(L).toFixed(1) },
     { id: 'wyield', name: 'Дерево/раб.', icon: 'log', row: 1, col: 2, max: 15, base: 45, mult: 1.5, val: L => F.wYield(L) + ' шт.' },
     { id: 'magnet', name: 'Магнит', icon: 'magnet', row: 1, col: 3, max: 15, base: 25, mult: 1.4, val: L => F.magnet(L).toFixed(1) + ' м' },
@@ -149,7 +182,10 @@
     cradius: [-2.5, 4.3, 1], cspeed: [-0.5, 0.5, 1], ccarry: [7.1, 9.0, 1], miner: [4.9, 3.0, 1],
     // рыбацкая база (на берегу, далеко от основной базы)
     fbase: [146.8, 29, 0], flen: [138.4, 26.0, 1], rod: [138.4, 29.4, 1], fisher: [138.4, 32.8, 1],
-    ship: [138.4, 36.2, 1], hdmg: [134.9, 26.0, 1], hrate: [134.9, 29.4, 1], sspeed: [134.9, 32.8, 1]
+    ship: [138.4, 36.2, 1], hdmg: [134.9, 26.0, 1], hrate: [134.9, 29.4, 1], sspeed: [134.9, 32.8, 1],
+    // джунглевая база (за северной стеной); плитки станций совпадают с SG.RAIL
+    jbase: [6, -131, 0], gun: [9.5, -131, 0], gdmg: [13, -131, 0], grate: [9.5, -134.5, 0], gcount: [13, -134.5, 0],
+    rail: [SG.RAIL.main.x, SG.RAIL.main.z, 0], railf: [SG.RAIL.fish.x, SG.RAIL.fish.z, 0], railj: [SG.RAIL.jungle.x, SG.RAIL.jungle.z, 0]
   };
   SG.U.forEach(u => { u.kind = 'upg'; u.x = POS[u.id][0]; u.z = POS[u.id][1]; u.rot = POS[u.id][2]; });
 
@@ -163,6 +199,9 @@
     miner: ['goldstall', 1],
     fbase: ['axe', 24], flen: ['fbase', 1], rod: ['fbase', 1], fisher: ['rod', 1],
     ship: ['flen', 3], hdmg: ['ship', 1], hrate: ['ship', 1], sspeed: ['ship', 1],
+    // условие может быть списком условий: нужны все
+    jbase: ['axe', SG.JUNGLE_NEED_LVL], gun: ['jbase', 1], gdmg: ['gun', 1], grate: ['gun', 1], gcount: ['gun', 1],
+    rail: ['gun', 1], railf: [['rail', 1], ['flen', 3]], railj: [['rail', 1], ['jbase', 1]],
     magnet: ['axe', 2], ore: ['axe', 3],
     price: ['cust', 1], demand: ['cust', 2], queue: ['cust', 3],
     base: ['axe', 2],

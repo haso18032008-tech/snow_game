@@ -8,14 +8,14 @@
   SG.D = {};
 
   SG.newState = () => ({
-    v: 3, cash: 0, wood: 0, meat: 0, gold: 0, fish: 0, hp: 100,
+    v: 3, cash: 0, wood: 0, meat: 0, gold: 0, fish: 0, banana: 0, hp: 100,
     cut: [], // индексы срубленных гигантских деревьев (стена детерминирована, поэтому индексы стабильны)
     lv: {}, prog: {},
-    stall: { wood: { stock: 0, cash: 0 }, meat: { stock: 0, cash: 0 }, gold: { stock: 0, cash: 0 }, fish: { stock: 0, cash: 0 } },
+    stall: { wood: { stock: 0, cash: 0 }, meat: { stock: 0, cash: 0 }, gold: { stock: 0, cash: 0 }, fish: { stock: 0, cash: 0 }, jwood: { stock: 0, cash: 0 }, banana: { stock: 0, cash: 0 } },
     nick: '', quality: 'high', tipClosed: false,
     earned: 0, // всего заработано с продаж — очки таблицы лидеров, только растёт
     // счётчики для раздела «Статистика» (ключи — маленькими латинскими буквами, их же проверяет сервер)
-    stats: { time: 0, trees: 0, wtrees: 0, ores: 0, kills: 0, boss: 0, verite: 0, deaths: 0, eaten: 0, spent: 0, customers: 0, cmeat: 0, mgold: 0, soldwood: 0, soldmeat: 0, soldgold: 0, giants: 0, fish: 0, soldfish: 0, cfish: 0, hfish: 0 }
+    stats: { time: 0, trees: 0, wtrees: 0, ores: 0, kills: 0, boss: 0, verite: 0, deaths: 0, eaten: 0, spent: 0, customers: 0, cmeat: 0, mgold: 0, soldwood: 0, soldmeat: 0, soldgold: 0, giants: 0, fish: 0, soldfish: 0, cfish: 0, hfish: 0, monk: 0, curio: 0, grust: 0, palms: 0, banana: 0, soldjwood: 0, soldbanana: 0, rides: 0 }
   });
   SG.lv = id => SG.S.lv[id] || 0;
   SG.total = () => SG.S.wood + SG.S.meat + SG.S.gold;
@@ -64,6 +64,15 @@
     D.priceMul = F.price(l('price'));
     D.goldUnlocked = l('goldstall') > 0;
     D.treeWood = 1 + Math.floor(D.axeLvl / 6);
+    D.jungleBase = l('jbase') > 0;
+    D.gunOwned = l('gun') > 0;
+    D.gunDmg = F.gDmg(l('gdmg'));
+    D.gunInt = F.gInt(l('grate'));
+    D.gunCount = F.gCount(l('gcount'));
+    D.gunRange = F.gRange(l('gdmg'));
+    D.railLvl = l('rail');
+    D.stFish = l('railf') > 0;
+    D.stJungle = l('railj') > 0;
     return D;
   };
   // Пересчёт характеристик из уровней улучшений. Вызывать после любой покупки/загрузки.
@@ -82,12 +91,12 @@
   SG.normalize = function (raw) {
     const S = SG.newState();
     if (raw && typeof raw === 'object') {
-      for (const k of ['cash', 'wood', 'meat', 'gold', 'fish', 'hp', 'earned']) if (isFinite(raw[k])) S[k] = raw[k];
+      for (const k of ['cash', 'wood', 'meat', 'gold', 'fish', 'banana', 'hp', 'earned']) if (isFinite(raw[k])) S[k] = raw[k];
       if (Array.isArray(raw.cut)) S.cut = raw.cut.filter(n => Number.isInteger(n) && n >= 0 && n < 2000).slice(0, 600);
       if (raw.lv) Object.assign(S.lv, raw.lv);
       if (raw.prog) Object.assign(S.prog, raw.prog);
       if (raw.stats) for (const k in S.stats) if (isFinite(raw.stats[k])) S.stats[k] = raw.stats[k];
-      if (raw.stall) for (const id of ['wood', 'meat', 'gold', 'fish']) if (raw.stall[id]) Object.assign(S.stall[id], raw.stall[id]);
+      if (raw.stall) for (const id of ['wood', 'meat', 'gold', 'fish', 'jwood', 'banana']) if (raw.stall[id]) Object.assign(S.stall[id], raw.stall[id]);
       if (typeof raw.nick === 'string') S.nick = raw.nick.slice(0, 16);
       if (raw.quality === 'low' || raw.quality === 'high') S.quality = raw.quality;
       S.tipClosed = !!raw.tipClosed;

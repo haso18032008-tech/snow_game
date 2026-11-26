@@ -104,10 +104,12 @@
     jingle: (t, o) => { [72, 76, 79, 84, 79, 84].forEach((m, i) => tone(o, N(m + 12), t + i * 0.1, 0.3, 'triangle', 0.28)); },
     splash: (t, o) => { noise(o, t, 0.16, 'bandpass', 700, 0.35, 300); tone(o, 420, t, 0.12, 'sine', 0.25, 160); },
     throw: (t, o) => { noise(o, t, 0.14, 'highpass', 1800, 0.22); tone(o, 500, t, 0.12, 'triangle', 0.15, 900); },
+    gun: (t, o) => { noise(o, t, 0.14, 'lowpass', 2400, 0.6, 300); tone(o, 150, t, 0.13, 'sawtooth', 0.3, 50); },
+    rail: (t, o) => { for (let i = 0; i < 8; i++) noise(o, t + i * 0.12, 0.08, 'bandpass', 500, 0.3); tone(o, 110, t, 0.9, 'sawtooth', 0.12, 170); },
     ui: (t, o) => tone(o, 880, t, 0.05, 'triangle', 0.18, 1100)
   };
   // не чаще, чем раз в N мс (иначе удары топоров сливаются в кашу)
-  const GAP = { chop: 55, wchop: 90, hit: 45, pay: 65, put: 55, pickWood: 45, pickMeat: 45, pickGold: 45, pickCash: 45, shot: 70, coin: 90, pick: 60, splash: 120, throw: 120 };
+  const GAP = { chop: 55, wchop: 90, hit: 45, pay: 65, put: 55, pickWood: 45, pickMeat: 45, pickGold: 45, pickCash: 45, shot: 70, coin: 90, pick: 60, splash: 120, throw: 120, gun: 60, rail: 400 };
   const lastT = {};
 
   A.play = function (name, x, z, arg) {

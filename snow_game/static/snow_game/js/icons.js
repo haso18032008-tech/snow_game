@@ -107,6 +107,26 @@
     },
     gear(g) { for (let i = 0; i < 8; i++) { g.save(); g.translate(50, 50); g.rotate(i * Math.PI / 4); rrect(g, -9, -46, 18, 22, 4, '#c9d1d8'); g.restore(); } circ(g, 50, 50, 32, '#c9d1d8'); circ(g, 50, 50, 13, '#5b6672'); },
     trophy(g) { g.lineWidth = 5; g.beginPath(); g.arc(22, 36, 14, Math.PI * 0.5, Math.PI * 1.5); g.stroke(); g.beginPath(); g.arc(78, 36, 14, -Math.PI * 0.5, Math.PI * 0.5); g.stroke(); poly(g, [[26, 12], [74, 12], [68, 52], [32, 52]], '#ffd23f'); rrect(g, 44, 52, 12, 18, 2, '#e0a800'); rrect(g, 30, 70, 40, 14, 4, '#c9961f'); },
+    palm(g) {
+      line(g, 44, 92, 54, 40, 10, DK); line(g, 44, 92, 54, 40, 6, '#b07a3f');
+      for (const pts of [[[54, 40], [14, 30], [8, 48], [40, 46]], [[54, 40], [92, 30], [96, 50], [64, 46]], [[54, 40], [30, 8], [48, 6], [58, 30]], [[54, 40], [80, 8], [64, 4], [52, 30]]]) poly(g, pts, '#3fae4a');
+      circ(g, 50, 46, 5, '#6b4426'); circ(g, 60, 48, 5, '#6b4426');
+    },
+    gun(g) {
+      poly(g, [[8, 56], [40, 40], [46, 58], [20, 80]], '#b0793a');
+      poly(g, [[36, 38], [94, 28], [94, 38], [38, 50]], '#8b95a0'); poly(g, [[38, 50], [94, 38], [94, 48], [42, 60]], '#6f7983');
+      g.beginPath(); g.arc(50, 68, 9, 0, Math.PI); g.lineWidth = 4; g.stroke(); g.lineWidth = 5;
+    },
+    banana(g) {
+      g.beginPath(); g.moveTo(14, 26); g.bezierCurveTo(26, 84, 70, 92, 90, 48); g.bezierCurveTo(70, 68, 42, 64, 28, 20); g.closePath();
+      g.fillStyle = '#ffe14d'; g.fill(); g.stroke();
+      circ(g, 20, 22, 6, '#8a5a2b'); circ(g, 90, 48, 4.5, '#5a3a1b');
+      line(g, 30, 44, 62, 70, 3, '#f0b800');
+    },
+    rail(g) {
+      line(g, 36, 8, 14, 92, 8, DK); line(g, 36, 8, 14, 92, 4, '#c9d1d8'); line(g, 64, 8, 86, 92, 8, DK); line(g, 64, 8, 86, 92, 4, '#c9d1d8');
+      for (const [y, h] of [[22, 0.18], [42, 0.3], [64, 0.45], [86, 0.62]]) { const w = 28 + 48 * (y - 8) / 84; line(g, 50 - w / 2, y, 50 + w / 2, y, 7, DK); line(g, 50 - w / 2, y, 50 + w / 2, y, 3, '#a56a35'); }
+    },
     skull(g) { circ(g, 50, 44, 32, '#f3f0e8'); rrect(g, 34, 66, 32, 22, 6, '#f3f0e8'); circ(g, 38, 46, 8, DK); circ(g, 62, 46, 8, DK); poly(g, [[50, 54], [45, 64], [55, 64]], DK); }
   };
 

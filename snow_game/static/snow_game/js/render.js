@@ -99,23 +99,63 @@
     return m;
   }
 
-  // Редкий моб — жёлтый смайлик: шар, два чёрных овала-глаза и улыбка
-  function makeSmiley() {
+  // Редкие мобы-шары: жёлтый «Верите» (смайлик), салатовый «Любопытстити» (большие глаза), фиолетовый «Грустити»
+  function makeBall(type) {
+    const C = { smile: ['#ffd60a', '#4a3a00'], curio: ['#a6e22e', '#2d4a00'], sad: ['#8a5bd8', '#2a1450'] }[type];
     const g = new THREE.Group(), inner = new THREE.Group();
-    inner.add(mesh(new THREE.SphereGeometry(1.5, 28, 20), mat('#ffd60a', { flatShading: false, emissive: new THREE.Color('#4a3a00') }), 0, 1.5, 0));
+    inner.add(mesh(new THREE.SphereGeometry(1.5, 28, 20), mat(C[0], { flatShading: false, emissive: new THREE.Color(C[1]) }), 0, 1.5, 0));
     // лицо наклонено вверх, потому что камера смотрит сверху — иначе глаза уезжают на «подбородок»
-    const eye = mat('#16140f', { flatShading: false }), face = new THREE.Group();
+    const eye = mat('#16140f', { flatShading: false }), white = mat('#ffffff', { flatShading: false }), face = new THREE.Group();
     face.position.set(0, 1.5, 0); face.rotation.x = -0.62;
-    for (const s of [-1, 1]) face.add(mesh(GEO.sph, eye, s * 0.52, 0.5, 1.36, 0.2, 0.37, 0.14));
-    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.09, 8, 28, Math.PI), eye);
-    smile.rotation.z = Math.PI; smile.position.set(0, 0.0, 1.3); smile.scale.set(1, 0.8, 1); face.add(smile);
+    if (type === 'curio') {
+      for (const s of [-1, 1]) { face.add(mesh(GEO.sph, white, s * 0.55, 0.5, 1.22, 0.4)); face.add(mesh(GEO.sph, eye, s * 0.55, 0.5, 1.58, 0.17)); }
+      const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.07, 8, 16), eye); mouth.position.set(0, -0.35, 1.4); face.add(mouth);
+    } else {
+      for (const s of [-1, 1]) face.add(mesh(GEO.sph, eye, s * 0.52, 0.5, 1.36, 0.2, 0.37, 0.14));
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.09, 8, 28, Math.PI), eye);
+      if (type === 'smile') { arc.rotation.z = Math.PI; arc.position.set(0, 0.0, 1.3); arc.scale.set(1, 0.8, 1); }
+      else { // грустный рот-«домик», брови домиком и слезинка
+        arc.position.set(0, -0.55, 1.3); arc.scale.set(0.6, 0.55, 1);
+        for (const s of [-1, 1]) { const br = mesh(GEO.box, eye, s * 0.55, 1.0, 1.25, 0.5, 0.09, 0.09); br.rotation.z = s * 0.45; face.add(br); }
+        face.add(mesh(GEO.sph, mat('#7fd0ff', { flatShading: false }), 0.95, 0.1, 1.15, 0.14, 0.24, 0.12));
+      }
+      face.add(arc);
+    }
     inner.add(face);
     g.add(inner, shadow(1.9));
     g.userData = { legs: [], inner };
     return g;
   }
+  // Обезьяна (kind 5) и горилла-босс (kind 6): бурая/серая, длинные руки, хвост
+  function makeMonkey(kind) {
+    const K = SG.KINDS[kind], big = kind === 6;
+    const g = new THREE.Group(), inner = new THREE.Group();
+    const fm = mat(big ? '#4a4a54' : '#8a5a34'), bm = mat(big ? '#5d5d68' : '#c99a6a'), face = mat(big ? '#2c2c33' : '#ecd0a8', { flatShading: false }), dark = mat('#1a1212');
+    inner.add(mesh(GEO.sph, fm, 0, 1.25, 0, big ? 1.0 : 0.75, 0.85, 0.65));
+    inner.add(mesh(GEO.sph, bm, 0, 1.2, 0.35, 0.5, 0.55, 0.3));
+    inner.add(mesh(GEO.sph, fm, 0, 2.15, 0.35, 0.5));
+    inner.add(mesh(GEO.sph, face, 0, 2.1, 0.72, 0.34, 0.3, 0.2));
+    for (const s of [-1, 1]) {
+      inner.add(mesh(GEO.sph, face, s * 0.52, 2.25, 0.3, 0.2));
+      inner.add(mesh(GEO.sph, dark, s * 0.15, 2.22, 0.88, 0.06));
+    }
+    inner.add(mesh(GEO.sph, dark, 0, 2.0, 0.9, 0.07));
+    for (let i = 0; i < 4; i++) inner.add(mesh(GEO.sph, fm, 0, 1.0 + i * 0.28, -0.7 - i * 0.18 + (i === 3 ? 0.25 : 0), 0.13)); // хвост
+    const legs = [];
+    for (const [x, y, l] of [[-0.8, 1.7, 1.25], [0.8, 1.7, 1.25], [-0.38, 0.8, 0.9], [0.38, 0.8, 0.9]]) {
+      const lg = new THREE.Group(); lg.position.set(x * (big ? 1.2 : 1), y, 0);
+      lg.add(mesh(GEO.cap, fm, 0, -l * 0.42, 0, 0.3, l, 0.3));
+      inner.add(lg); legs.push(lg);
+    }
+    g.add(inner, shadow(1.3 * K.scale));
+    inner.scale.setScalar(K.scale);
+    g.userData = { legs, inner };
+    return g;
+  }
   function makeBear(kind) {
-    if (kind === 4) return makeSmiley();
+    if (kind === 4) return makeBall('smile');
+    if (kind === 7) return makeBall('curio');
+    if (kind === 5 || kind === 6) return makeMonkey(kind);
     const K = SG.KINDS[kind];
     const g = new THREE.Group(), inner = new THREE.Group();
     const fur = kind === 3 ? '#cfe8ff' : '#f4f1ea', dark = kind === 3 ? '#a9cdee' : '#e2ddd0';
@@ -200,9 +240,9 @@
     MAT.cashMats = [sideG, sideG, mat('#fff', { map: bill.tex }), mat('#2c8a43'), sideG, sideG];
     MAT.green = MAT.cashMats; MAT.red = mat('#c22d2d');
     MAT.logA = [mat('#fff', { map: bark.tex }), mat('#fff', { map: ring.tex }), mat('#fff', { map: ring.tex })]; MAT.logB = MAT.logA;
-    MAT.fish = mat('#cfe3ee', { flatShading: false }); MAT.meat = mat('#fff', { map: meatT.tex, flatShading: false, roughness: 0.55 }); MAT.gold = mat('#ffcc2e', { emissive: new THREE.Color('#6b4b00') });
+    MAT.banana = mat('#ffe14d', { flatShading: false, emissive: new THREE.Color('#5a4a00') }); MAT.fish = mat('#cfe3ee', { flatShading: false }); MAT.meat = mat('#fff', { map: meatT.tex, flatShading: false, roughness: 0.55 }); MAT.gold = mat('#ffcc2e', { emissive: new THREE.Color('#6b4b00') });
 
-    buildGround(); buildTrees(); buildGiants(); buildOres(); buildBase(); buildStalls(); buildFish(); buildShip(); buildSea(); buildPads(); buildFire(); buildSnow();
+    buildGround(); buildTrees(); buildGiants(); buildPalms(); buildOres(); buildBase(); buildStalls(); buildFish(); buildJungle(); buildStations(); buildShip(); buildSea(); buildPads(); buildFire(); buildSnow();
     buildPlayer(); buildPools();
     R.resize();
     R.rebuildBase();
@@ -255,6 +295,7 @@
       const l = mesh(GEO.plane, lm, st.x + 0.8, 0.04, 36, 4.4, 46, 1); l.renderOrder = 2; l.rotation.x = -Math.PI / 2; scene.add(l);
     }
     buildWater();
+    buildJungleGround();
   }
   // Озеро восточного биома: ледяная кромка у берега и вода с бегущей рябью (текстуру двигаем в R.frame)
   let waterTex;
@@ -332,17 +373,35 @@
     if (any) { treeIM.instanceMatrix.needsUpdate = true; stumpIM.instanceMatrix.needsUpdate = true; }
   }
 
-  // Гигантские деревья: та же модель, но втрое крупнее и чуть темнее; срубленный гигант оставляет широкий пень
+  // Гигантские деревья: восточные — ёлка втрое крупнее и чуть темнее, северные — тропические великаны.
+  // Срубленный гигант оставляет широкий пень. Индекс в своей InstancedMesh: i (восточные) или i - jgStart (северные).
+  let jgiantIM;
+  function makeJGiantGeo() {
+    const parts = [];
+    const trunk = new THREE.CylinderGeometry(0.5, 0.78, 7.4, 8); trunk.translate(0, 3.7, 0);
+    parts.push({ geo: trunk, color: yy => (Math.floor(yy * 1.6) % 2 ? [0.36, 0.28, 0.2] : [0.42, 0.33, 0.24]) });
+    const flare = new THREE.ConeGeometry(1.25, 1.3, 8); flare.translate(0, 0.65, 0);
+    parts.push({ geo: flare, color: () => [0.34, 0.26, 0.19] });
+    const blob = (x, y, z, r, sy) => {
+      const g = new THREE.IcosahedronGeometry(r, 1); g.scale(1, sy, 1); g.translate(x, y, z);
+      parts.push({ geo: g, color: yy => lerp3([0.08, 0.3, 0.12], [0.3, 0.64, 0.2], Math.max(0, Math.min(1, (yy - 6.2) / 4.2))) });
+    };
+    blob(0, 9.0, 0, 3.2, 0.72);
+    for (let k = 0; k < 5; k++) { const a = k * 1.2566; blob(Math.cos(a) * 2.5, 8.2 + (k % 2) * 0.5, Math.sin(a) * 2.5, 2.0, 0.7); }
+    return merge(parts);
+  }
   function buildGiants() {
-    const n = SG.G.giants.length, c = new THREE.Color(0.8, 0.88, 0.95);
-    giantIM = new THREE.InstancedMesh(treeGeo, treeMatV, n);
-    for (let i = 0; i < n; i++) giantIM.setColorAt(i, c);
-    giantStumpIM = new THREE.InstancedMesh(GEO.cyl, mat('#d9ad78'), n);
-    for (const g of SG.G.giants) g.dirty = true;
-    scene.add(giantIM, giantStumpIM);
+    const G = SG.G, nE = G.jgStart, nJ = G.giants.length - G.jgStart, c = new THREE.Color(0.8, 0.88, 0.95);
+    giantIM = new THREE.InstancedMesh(treeGeo, treeMatV, nE);
+    for (let i = 0; i < nE; i++) giantIM.setColorAt(i, c);
+    jgiantIM = new THREE.InstancedMesh(makeJGiantGeo(), treeMatV, nJ);
+    giantStumpIM = new THREE.InstancedMesh(GEO.cyl, mat('#d9ad78'), G.giants.length);
+    for (const g of G.giants) g.dirty = true;
+    scene.add(giantIM, jgiantIM, giantStumpIM);
   }
   function syncGiants() {
     let any = false;
+    const js = SG.G.jgStart;
     for (const t of SG.G.giants) {
       if (!t.dirty) continue;
       t.dirty = false; any = true;
@@ -351,11 +410,65 @@
       const wob = t.shake > 0 ? Math.sin(SG.G.t * 45) * t.shake * 0.12 : 0;
       tEu.set(wob, t.rot, wob * 0.6); tq.setFromEuler(tEu);
       ts.setScalar(alive ? t.s : 0.0001);
-      tm.compose(tp, tq, ts); giantIM.setMatrixAt(t.i, tm);
+      tm.compose(tp, tq, ts); if (t.jg) jgiantIM.setMatrixAt(t.i - js, tm); else giantIM.setMatrixAt(t.i, tm);
       tp.set(t.x, 0.45, t.z); tq.identity(); ts.set(alive ? 0.0001 : 1.0, alive ? 0.0001 : 0.45, alive ? 0.0001 : 1.0);
       tm.compose(tp, tq, ts); giantStumpIM.setMatrixAt(t.i, tm);
     }
-    if (any) { giantIM.instanceMatrix.needsUpdate = true; giantStumpIM.instanceMatrix.needsUpdate = true; }
+    if (any) { giantIM.instanceMatrix.needsUpdate = true; jgiantIM.instanceMatrix.needsUpdate = true; giantStumpIM.instanceMatrix.needsUpdate = true; }
+  }
+
+  // ---------- пальмы джунглей ----------
+  // Два вида в двух InstancedMesh: обычная и банановая (с гроздьями). Отросшая пальма может сменить вид.
+  let palmIM, palmBanIM, palmStumpIM;
+  function makePalmGeo(ban) {
+    const parts = [], lean = y => 0.035 * y * y;
+    for (let k = 0; k < 4; k++) {
+      const yc = 0.675 + k * 1.3, geo = new THREE.CylinderGeometry(0.2 - 0.025 * k, 0.27 - 0.025 * k, 1.35, 6);
+      geo.translate(lean(yc), yc, 0);
+      parts.push({ geo, color: () => (k % 2 ? [0.5, 0.36, 0.22] : [0.6, 0.45, 0.28]) });
+    }
+    const cx = lean(5.3), cy = 5.35;
+    for (let i = 0; i < 8; i++) {
+      const geo = new THREE.BoxGeometry(2.9, 0.07, 0.8); geo.translate(1.45, 0, 0);
+      geo.applyMatrix4(new THREE.Matrix4().makeRotationZ(-0.4 - (i % 2) * 0.2));
+      geo.applyMatrix4(new THREE.Matrix4().makeRotationY(i * Math.PI / 4));
+      geo.translate(cx, cy, 0);
+      const c = [0.16 + 0.08 * (i % 3), 0.52 + 0.1 * (i % 2), 0.16];
+      parts.push({ geo, color: () => c });
+    }
+    for (let i = 0; i < 3; i++) { const geo = new THREE.SphereGeometry(0.2, 6, 5); geo.translate(cx + Math.cos(i * 2.1) * 0.3, cy - 0.3, Math.sin(i * 2.1) * 0.3); parts.push({ geo, color: () => [0.3, 0.2, 0.12] }); }
+    if (ban) {
+      for (let i = 0; i < 5; i++) {
+        const geo = new THREE.SphereGeometry(1, 6, 5); geo.scale(0.14, 0.5, 0.14);
+        geo.translate(cx + Math.cos(i * 1.26) * 0.42, cy - 0.65, Math.sin(i * 1.26) * 0.42);
+        parts.push({ geo, color: yy => (yy > cy - 0.7 ? [0.75, 0.85, 0.2] : [1.0, 0.86, 0.15]) });
+      }
+    }
+    return merge(parts);
+  }
+  function buildPalms() {
+    const n = SG.G.palms.length;
+    palmIM = new THREE.InstancedMesh(makePalmGeo(false), treeMatV, n);
+    palmBanIM = new THREE.InstancedMesh(makePalmGeo(true), treeMatV, n);
+    palmStumpIM = new THREE.InstancedMesh(GEO.cyl, mat('#9c7a4e'), n);
+    for (const t of SG.G.palms) t.dirty = true;
+    scene.add(palmIM, palmBanIM, palmStumpIM);
+  }
+  function syncPalms() {
+    let any = false;
+    for (const t of SG.G.palms) {
+      if (!t.dirty) continue;
+      t.dirty = false; any = true;
+      const alive = t.hp > 0;
+      tp.set(t.x, 0, t.z);
+      const wob = t.shake > 0 ? Math.sin(SG.G.t * 45) * t.shake * 0.2 : 0;
+      tEu.set(wob, t.rot, wob * 0.6); tq.setFromEuler(tEu);
+      ts.setScalar(alive && !t.ban ? t.s : 0.0001); tm.compose(tp, tq, ts); palmIM.setMatrixAt(t.i, tm);
+      ts.setScalar(alive && t.ban ? t.s : 0.0001); tm.compose(tp, tq, ts); palmBanIM.setMatrixAt(t.i, tm);
+      tp.set(t.x, 0.25, t.z); tq.identity(); ts.set(alive ? 0.0001 : 0.4, alive ? 0.0001 : 0.25, alive ? 0.0001 : 0.4);
+      tm.compose(tp, tq, ts); palmStumpIM.setMatrixAt(t.i, tm);
+    }
+    if (any) { palmIM.instanceMatrix.needsUpdate = true; palmBanIM.instanceMatrix.needsUpdate = true; palmStumpIM.instanceMatrix.needsUpdate = true; }
   }
 
   // ---------- золотая руда ----------
@@ -677,6 +790,138 @@
     });
   }
 
+  // ---------- джунгли: земля, база с лавками ----------
+  // Земля — зелёный мох поверх снега; южный край (у стены) размыт. База невидима, пока не куплена «Джунгли-база».
+  function buildJungleGround() {
+    const J = SG.JUNGLE, x0 = -200, x1 = SG.WALL_X, z0 = -200, z1 = J.z + 8;
+    const W = 1024, H = Math.round(W * (z1 - z0) / (x1 - x0)), T = canvasTex(W, H), g = T.g;
+    g.fillStyle = '#4c9a3a'; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 420; i++) {
+      const x = Math.random() * W, y = Math.random() * H, r = 12 + Math.random() * 50;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, Math.random() < 0.5 ? 'rgba(120,200,80,.35)' : 'rgba(25,80,35,.30)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    g.globalCompositeOperation = 'destination-in'; // южный край и западная граница мягко растворяются в снегу
+    const fade = g.createLinearGradient(0, H * 0.82, 0, H); fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fade; g.fillRect(0, 0, W, H);
+    const m = mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: T.tex, transparent: true, depthWrite: false }), (x0 + x1) / 2, 0.025, (z0 + z1) / 2, x1 - x0, z1 - z0, 1);
+    m.renderOrder = 1; m.rotation.x = -Math.PI / 2; scene.add(m);
+  }
+  const jungleV = { root: null, stalls: [] };
+  function buildJungle() {
+    const root = new THREE.Group(); root.visible = false;
+    const Z0 = SG.JB.z0, wood = mat('#b98550'), dark = mat('#6b4426'), leaf = mat('#3f9a3c');
+    // утоптанная земля под базой
+    const C = canvasTex(256, 128), cg = C.g;
+    cg.shadowColor = '#b58a55'; cg.shadowBlur = 26; cg.fillStyle = '#b58a55'; cg.fillRect(34, 24, 188, 80);
+    const earth = mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: C.tex, transparent: true, depthWrite: false }), 2, 0.04, Z0 - 2, 46, 23, 1);
+    earth.renderOrder = 2; earth.rotation.x = -Math.PI / 2; root.add(earth);
+    for (const d of SG.JSTALLS) {
+      const x = d.x;
+      root.add(mesh(GEO.box, mat('#d9a066'), x, 0.2, Z0 + 0.8, 3.6, 0.4, 4.6));
+      for (const sx of [-1, 1]) root.add(mesh(GEO.cyl, dark, x + sx * 1.7, 1.7, Z0 - 1.0, 0.14, 3.4, 0.14));
+      root.add(mesh(GEO.box, leaf, x, 3.5, Z0 - 0.4, 4.4, 0.25, 2.8));
+      root.add(mesh(GEO.box, mat('#2d7a2f'), x, 3.7, Z0 - 0.4, 3.6, 0.15, 2.2));
+      const items = [];
+      for (let i = 0; i < 40; i++) {
+        let m;
+        if (d.id === 'jwood') { m = mesh(GEO.cyl, i % 2 ? MAT.logA : MAT.logB, 0, 0, 0, 0.25, 0.9, 0.25); m.rotation.z = Math.PI / 2; }
+        else { m = mesh(GEO.sph, MAT.banana, 0, 0, 0, 0.5, 0.13, 0.14); }
+        m.visible = false; root.add(m); items.push(m);
+      }
+      root.add(mesh(GEO.box, mat('#3b3b3f'), d.x + 3.4, 0.1, Z0 + 2.9, 2.8, 0.2, 2.4));
+      const cash = [];
+      for (let i = 0; i < 36; i++) {
+        const m = mesh(GEO.box, MAT.green, d.x + 3.4 + ((i % 3) - 1) * 0.8, 0.32 + Math.floor(i / 6) * 0.26, Z0 + 2.9 + (Math.floor((i % 6) / 3) - 0.5) * 0.95, 0.72, 0.24, 0.85);
+        m.visible = false; root.add(m); cash.push(m);
+      }
+      const b = canvasTex(128, 128);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: b.tex, depthTest: false, transparent: true }));
+      sp.scale.set(2.6, 2.6, 1); sp.position.set(x, 5.0, Z0); sp.renderOrder = 10; root.add(sp);
+      const st = SG.G.stalls.find(q => q.id === d.id);
+      const pad = canvasTex(256, 170);
+      const pm = mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: pad.tex, transparent: true, depthWrite: false }), st.pad.x, 0.44, st.pad.z, 3.0, 2.0, 1);
+      pm.renderOrder = 3; pm.rotation.x = -Math.PI / 2; root.add(pm);
+      jungleV.stalls.push({ st, items, cash, bub: b, sp, pad, padM: pm, key: '', pkey: '', def: d });
+    }
+    scene.add(root); jungleV.root = root;
+  }
+  function syncJungle() {
+    const D = SG.D, Z0 = SG.JB.z0;
+    jungleV.root.visible = D.jungleBase;
+    if (!D.jungleBase) return;
+    for (const v of jungleV.stalls) {
+      const st = v.st, x = st.x, n = Math.min(40, Math.floor(st.st.stock));
+      v.items.forEach((m, i) => {
+        m.visible = i < n; if (!m.visible) return;
+        if (v.def.id === 'jwood') { const col = i % 6, row = Math.floor(i / 6); m.position.set(x - 1.25 + col * 0.5, 0.65 + row * 0.42, Z0); }
+        else { const col = i % 5, row = Math.floor(i / 5); m.position.set(x - 1.0 + col * 0.5, 0.55 + row * 0.16, Z0 + (row % 2) * 0.15); }
+      });
+      const nc = st.st.cash > 0 ? Math.min(36, 1 + Math.floor(st.st.cash / (st.price * 2))) : 0;
+      v.cash.forEach((m, i) => (m.visible = i < nc));
+      drawBubble(v); drawStallPad(v);
+    }
+  }
+
+  // ---------- железная дорога: станции и вагон ----------
+  // Уровни: 1 — дрезина на рельсах по земле, 2 — поезд в открытой траншее, 3 — метро: спуск под землю с аркой.
+  function makeCart(lvl) {
+    const g = new THREE.Group();
+    if (lvl <= 1) {
+      g.add(mesh(GEO.box, mat('#b98550'), 0, 0.5, 0, 1.3, 0.2, 2.0), mesh(GEO.box, mat('#6b4426'), 0, 0.72, -0.8, 1.3, 0.3, 0.12));
+      for (const [x, z] of [[-0.62, -0.7], [0.62, -0.7], [-0.62, 0.7], [0.62, 0.7]]) { const w = mesh(GEO.cyl, mat('#333'), x, 0.32, z, 0.28, 0.12, 0.28); w.rotation.z = Math.PI / 2; g.add(w); }
+    } else {
+      g.add(mesh(GEO.box, mat('#c0392b'), 0, 0.9, 0, 1.7, 1.1, 3.4), mesh(GEO.box, mat('#8f2a20'), 0, 1.6, -0.6, 1.5, 0.5, 1.6), mesh(GEO.box, mat('#9fd0ee'), 0, 1.6, 0.25, 1.3, 0.3, 0.05));
+      g.add(mesh(GEO.cyl, mat('#222'), 0, 1.7, 1.2, 0.22, 0.6, 0.22));
+      for (const [x, z] of [[-0.8, -1.1], [0.8, -1.1], [-0.8, 1.1], [0.8, 1.1]]) { const w = mesh(GEO.cyl, mat('#333'), x, 0.35, z, 0.35, 0.14, 0.35); w.rotation.z = Math.PI / 2; g.add(w); }
+    }
+    return g;
+  }
+  const stationV = [];
+  let rideCart = [], metroSign;
+  function buildStations() {
+    const steel = mat('#aab2ba'), sleeper = mat('#6b4426'), rim = mat('#cfc7b8');
+    const ms = canvasTex(128, 128), mg = ms.g;
+    mg.fillStyle = '#2a64c8'; mg.beginPath(); mg.arc(64, 64, 58, 0, 7); mg.fill();
+    mg.fillStyle = '#fff'; mg.font = '800 84px system-ui, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle'; mg.fillText('M', 64, 70);
+    metroSign = ms.tex;
+    for (const st of SG.G.stations) {
+      const root = new THREE.Group(); root.position.set(st.x, 0, st.z); root.visible = false;
+      if (st.id !== 'main') root.add(mesh(GEO.box, mat('#6c6e75'), 0, 0.07, 0, 3.4, 0.14, 3.4)); // на основной базе под станцией плитка улучшения
+      const rails = (y) => {
+        const g = new THREE.Group();
+        for (const z of [-0.55, 0.55]) g.add(mesh(GEO.box, steel, 0, y + 0.1, z, 7, 0.1, 0.12));
+        for (let x = -3; x <= 3; x += 1) g.add(mesh(GEO.box, sleeper, x, y + 0.04, 0, 0.22, 0.08, 1.7));
+        return g;
+      };
+      const g1 = new THREE.Group(); g1.add(rails(0.14)); const c1 = makeCart(1); c1.rotation.y = Math.PI / 2; c1.position.y = 0.14; g1.add(c1);
+      const g2 = new THREE.Group();
+      g2.add(mesh(GEO.box, mat('#14161b'), 0, 0.17, 0, 3.4, 0.02, 3.4)); // тёмная траншея
+      for (const [x, z, w, d] of [[0, -1.8, 3.8, 0.35], [0, 1.8, 3.8, 0.35], [-1.8, 0, 0.35, 3.2], [1.8, 0, 0.35, 3.2]]) g2.add(mesh(GEO.box, rim, x, 0.3, z, w, 0.3, d));
+      g2.add(rails(0.0)); const c2 = makeCart(2); c2.rotation.y = Math.PI / 2; c2.scale.setScalar(0.8); c2.position.y = 0.05; g2.add(c2);
+      const g3 = new THREE.Group();
+      g3.add(mesh(GEO.box, mat('#0c0d11'), 0, 0.17, 0, 3.4, 0.02, 3.4));
+      for (const [x, z, w, d] of [[0, -1.8, 3.8, 0.4], [0, 1.8, 3.8, 0.4], [-1.8, 0, 0.4, 3.2], [1.8, 0, 0.4, 3.2]]) g3.add(mesh(GEO.box, rim, x, 0.35, z, w, 0.4, d));
+      for (let k = 0; k < 4; k++) g3.add(mesh(GEO.box, mat(k % 2 ? '#8d8f96' : '#a7a9b0'), -0.9 + k * 0.6, 0.2 - k * 0.0, 0, 0.55, 0.08, 2.6)); // ступени вниз
+      for (const z of [-1.8, 1.8]) g3.add(mesh(GEO.box, mat('#2a64c8'), 0, 1.6, z, 0.3, 3.2, 0.3));
+      g3.add(mesh(GEO.box, mat('#2a64c8'), 0, 3.2, 0, 0.3, 0.3, 4.0));
+      const sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: metroSign, depthTest: false, transparent: true })); sg.scale.set(1.8, 1.8, 1); sg.position.set(0, 4.2, 0); sg.renderOrder = 10; g3.add(sg);
+      root.add(g1, g2, g3); scene.add(root);
+      stationV.push({ st, root, g: [g1, g2, g3] });
+    }
+    for (let l = 1; l <= 2; l++) { const c = makeCart(l); c.visible = false; scene.add(c); rideCart[l] = c; }
+  }
+  function syncStations() {
+    const lvl = SG.D.railLvl;
+    for (const v of stationV) {
+      v.root.visible = v.st.ok();
+      v.g.forEach((g, i) => (g.visible = lvl === i + 1));
+    }
+    const p = SG.G.p, r = p.ride;
+    rideCart.forEach((c, l) => { if (c) { c.visible = !!r && r.lvl === l; if (c.visible) { c.position.set(p.x, 0.15, p.z); c.rotation.y = p.face; } } });
+  }
+
   // ---------- корабль ----------
   let shipG, shipRig;
   function buildShip() {
@@ -731,6 +976,30 @@
     const mk = (c, o) => new THREE.Sprite(new THREE.SpriteMaterial({ color: c, depthTest: false, transparent: true, opacity: o }));
     seaBar = { bg: mk(0x1a1a1a, 0.7), fg: mk(0xff4d4d, 1) }; seaBar.bg.renderOrder = 11; seaBar.fg.renderOrder = 12;
     seaBar.bg.visible = seaBar.fg.visible = false; scene.add(seaBar.bg, seaBar.fg);
+    // «Грустити»: фиолетовый шар на воде, имя, полоска здоровья и круги, когда нырнул
+    const sg = makeBall('sad'); sg.visible = false; scene.add(sg);
+    const nc = canvasTex(256, 64), ng = nc.g;
+    ng.textAlign = 'center'; ng.font = '800 46px system-ui, sans-serif'; ng.lineWidth = 8; ng.strokeStyle = '#1e0f3a'; ng.strokeText(SG.SAD_NAME, 128, 46); ng.fillStyle = '#c9a6ff'; ng.fillText(SG.SAD_NAME, 128, 46);
+    const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: nc.tex, depthTest: false, transparent: true })); name.scale.set(5, 1.25, 1); name.renderOrder = 13; name.visible = false; scene.add(name);
+    const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1a1a1a, depthTest: false, transparent: true, opacity: 0.7 })), fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xff4d4d, depthTest: false, transparent: true }));
+    bg.renderOrder = 11; fg.renderOrder = 12; bg.visible = fg.visible = false; scene.add(bg, fg);
+    const rip = mesh(new THREE.RingGeometry(0.5, 0.62, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }), 0, 0.07, 0);
+    rip.rotation.x = -Math.PI / 2; rip.renderOrder = 5; rip.visible = false; scene.add(rip);
+    sadV = { g: sg, name, bg, fg, rip };
+  }
+  let sadV;
+  function syncSad() {
+    const f = SG.G.sad, t = SG.G.t, v = sadV;
+    const show = !f.dead && !f.under;
+    v.g.visible = show; v.name.visible = show;
+    const hp = show && f.hp < f.max; v.bg.visible = v.fg.visible = hp;
+    v.rip.visible = !f.dead && f.under; // под водой виден только круг на поверхности
+    if (!f.dead && f.under) { const u = (t * 1.5) % 1; v.rip.position.set(f.x, 0.07, f.z); v.rip.scale.setScalar(1.5 + u * 3); v.rip.material.opacity = 0.6 * (1 - u); }
+    if (!show) return;
+    v.g.position.set(f.x, 0.3 + Math.sin(t * 2 + 1) * 0.15, f.z); v.g.rotation.y = Math.PI / 4;
+    v.g.userData.inner.scale.setScalar(f.flash > 0 ? 1.1 : 1);
+    v.name.position.set(f.x, 5.2, f.z);
+    if (hp) { const k = Math.max(0.001, f.hp / f.max); v.bg.position.set(f.x, 4.6, f.z); v.bg.scale.set(3.2, 0.4, 1); v.fg.position.set(f.x - 1.55 * (1 - k), 4.6, f.z); v.fg.scale.set(3.1 * k, 0.3, 1); }
   }
   function syncSea() {
     const G = SG.G, t = G.t, p = G.p;
@@ -821,7 +1090,7 @@
   }
 
   // ---------- игрок и его вещи ----------
-  let player, axeMeshes = [], ring, stacks, playerShadow, arrowG, playerRigG, playerRig;
+  let player, axeMeshes = [], gunMeshes = [], ring, stacks, playerShadow, arrowG, playerRigG, playerRig;
   function buildPlayer() {
     player = new THREE.Group();
     player.add(makeHuman('#2a93dc', '#f6f1e7', true));
@@ -840,6 +1109,13 @@
     // своя удочка на пирсе: группа смотрит на воду (+x) независимо от поворота героя
     playerRigG = new THREE.Group(); playerRigG.rotation.y = Math.PI / 2; scene.add(playerRigG);
     playerRig = makeRig(playerRigG, [0.3, 1.25, 0.5]); hideRig(playerRig);
+    // дробовики: двустволка, лежит вдоль радиуса (+x), как топор; вспышка у дула
+    for (let i = 0; i < 6; i++) {
+      const g = new THREE.Group(), steel = mat('#3b3f46');
+      g.add(mesh(GEO.box, steel, 1.0, 0, 0.08, 1.5, 0.12, 0.12), mesh(GEO.box, steel, 1.0, 0, -0.08, 1.5, 0.12, 0.12), mesh(GEO.box, mat('#7a4a24'), 0.0, -0.04, 0, 0.7, 0.24, 0.22));
+      const fl = mesh(GEO.sph, mat('#ffd23f', { emissive: new THREE.Color('#ff9a00') }), 1.85, 0, 0, 0.3); fl.visible = false; g.add(fl); g.userData.flash = fl;
+      g.visible = false; scene.add(g); gunMeshes.push(g);
+    }
     for (let i = 0; i < 10; i++) {
       const a = new THREE.Group(), hm = mat('#fff');
       a.userData.handle = mesh(GEO.box, mat('#8a5a30'), 0.5, 0, 0, 1, 0.14, 0.14);
@@ -851,13 +1127,14 @@
     // Башни на спине: брёвна, мясо, золото и деньги. Без рюкзака они растут почти без предела (как в рекламе),
     // каждая — один InstancedMesh, чтобы сотни предметов не стоили кадров.
     const mk = (geo, m, n) => { const im = new THREE.InstancedMesh(geo, m, n); im.count = 0; im.frustumCulled = false; scene.add(im); return im; };
-    stacks = { wood: mk(GEO.cyl, MAT.logA, 300), meat: mk(GEO.sph, MAT.meat, 200), gold: mk(GEO.box, MAT.gold, 100), fish: mk(GEO.sph, MAT.fish, 200), cash: mk(GEO.box, MAT.cashMats, 300) };
+    stacks = { banana: mk(GEO.sph, MAT.banana, 200), wood: mk(GEO.cyl, MAT.logA, 300), meat: mk(GEO.sph, MAT.meat, 200), gold: mk(GEO.box, MAT.gold, 100), fish: mk(GEO.sph, MAT.fish, 200), cash: mk(GEO.box, MAT.cashMats, 300) };
   }
   let lastTier = -1;
   function syncPlayer(dt) {
     const G = SG.G, p = G.p, D = SG.D, S = SG.S;
-    player.visible = !p.dead; playerShadow.visible = !p.dead;
-    const yo = G.ship.boarded ? 1.2 : 0; // на корабле герой стоит на палубе
+    const rideL = p.ride ? p.ride.lvl : 0;
+    player.visible = !p.dead && rideL < 3; playerShadow.visible = !p.dead; // в метро игрока не видно
+    const yo = G.ship.boarded ? 1.2 : (rideL && rideL < 3 ? 0.6 : 0); // на корабле — на палубе, в вагоне — над платформой
     player.position.set(p.x, yo, p.z); player.rotation.y = p.face;
     animHuman(player.children[0], p.walk, G.t);
     // на пирсе: удочка в руках; на корабле — руки опущены, гарпун стреляет сам
@@ -870,7 +1147,7 @@
     const bd = G.bounds, adx = (bd.minX + bd.maxX) / 2 - p.x, adz = (bd.minZ + bd.maxZ) / 2 - p.z;
     arrowG.visible = !p.dead && !G.inBase(p.x, p.z, 1); // на самой базе стрелка не нужна
     arrowG.position.set(p.x, 0.22, p.z); arrowG.rotation.y = Math.atan2(-adz, adx);
-    ring.visible = !p.dead && !G.fishMode; ring.position.set(p.x, 0.2, p.z); ring.scale.set(D.axeR, D.axeR, D.axeR);
+    ring.visible = !p.dead && !G.fishMode && !p.ride; ring.position.set(p.x, 0.2, p.z); ring.scale.set(D.axeR, D.axeR, D.axeR);
     if (lastTier !== D.tier) {
       lastTier = D.tier;
       const col = new THREE.Color(SG.TIERS[D.tier].c);
@@ -880,15 +1157,23 @@
       }
     }
     axeMeshes.forEach((a, i) => {
-      const on = i < D.axeCount && !p.dead && !G.fishMode; a.visible = on; if (!on) return;
+      const on = i < D.axeCount && !p.dead && !G.fishMode && !p.ride; a.visible = on; if (!on) return;
       const ang = p.axeAng + i * Math.PI * 2 / D.axeCount;
       a.position.set(p.x, 1.0, p.z); a.rotation.y = -ang;
       a.userData.handle.scale.x = D.axeR; a.userData.handle.position.x = D.axeR / 2;
       a.userData.head.position.x = D.axeR;
     });
+    gunMeshes.forEach((m, i) => {
+      const gn = G.guns[i];
+      if (!gn || p.dead) { m.visible = false; return; }
+      m.visible = true;
+      m.position.set(gn.x, 1.0, gn.z); m.rotation.y = -gn.aim;
+      m.userData.flash.visible = gn.flash > 0; m.scale.setScalar(gn.flash > 0 ? 1.12 : 1);
+    });
     // башни на спине (смещения — вдоль правой/левой стороны экрана)
     const bob = p.walk ? Math.abs(Math.sin(G.t * 14)) * 0.08 : 0, show = !p.dead;
     const cashN = S.cash > 0 ? Math.min(300, 1 + Math.floor(8 * Math.sqrt(S.cash / 10))) : 0;
+    fillStack(stacks.banana, show ? Math.min(200, Math.floor(S.banana)) : 0, p.x - 0.5, p.z - 1.5, 2.3 + bob + yo, 0.12, 0.5, 0.14, 0.18, false);
     fillStack(stacks.fish, show ? Math.min(200, Math.floor(S.fish)) : 0, p.x + 1.7, p.z - 0.2, 2.3 + bob + yo, 0.12, 0.6, 0.12, 0.22, false);
     fillStack(stacks.wood, show ? Math.min(300, Math.floor(S.wood)) : 0, p.x, p.z, 2.4 + bob + yo, 0.2, 0.3, 0.95, 0.3, true);
     fillStack(stacks.meat, show ? Math.min(200, Math.floor(S.meat)) : 0, p.x + 0.85, p.z - 0.85, 2.3 + bob + yo, 0.17, 0.5, 0.13, 0.42, false);
@@ -910,7 +1195,7 @@
 
   // ---------- пулы и динамические объекты ----------
   const maps = { bears: new Map(), workers: new Map(), collectors: new Map(), miners: new Map(), fishers: new Map(), customers: new Map(), turrets: new Map() };
-  let dropPool = [], shotPool = [], DROP;
+  let dropPool = [], shotPool = [], gunShotPool = [], DROP;
   function buildPools() {
     for (const b of SG.G.bears) {
       const g = makeBear(b.kind);
@@ -918,9 +1203,9 @@
       const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xff4d4d, depthTest: false, transparent: true }));
       bg.renderOrder = 11; fg.renderOrder = 12; bg.scale.set(3.2, 0.4, 1); scene.add(bg, fg, g);
       let name = null;
-      if (b.kind === 4) {
-        const nc = canvasTex(256, 64), ng = nc.g;
-        ng.textAlign = 'center'; ng.font = '800 46px system-ui, sans-serif'; ng.lineWidth = 8; ng.strokeStyle = '#3a2a00'; ng.strokeText(SG.VERITE_NAME, 128, 46); ng.fillStyle = '#ffd23f'; ng.fillText(SG.VERITE_NAME, 128, 46);
+      if (b.kind === 4 || b.kind === 7) {
+        const nm = b.kind === 4 ? SG.VERITE_NAME : SG.CURIO_NAME, nc = canvasTex(256, 64), ng = nc.g;
+        ng.textAlign = 'center'; ng.font = '800 42px system-ui, sans-serif'; ng.lineWidth = 8; ng.strokeStyle = b.kind === 4 ? '#3a2a00' : '#1d3a00'; ng.strokeText(nm, 128, 46); ng.fillStyle = b.kind === 4 ? '#ffd23f' : '#b6f25a'; ng.fillText(nm, 128, 46);
         name = new THREE.Sprite(new THREE.SpriteMaterial({ map: nc.tex, depthTest: false, transparent: true })); name.scale.set(5, 1.25, 1); name.renderOrder = 13; scene.add(name);
       }
       maps.bears.set(b, { g, bg, fg, name });
@@ -930,11 +1215,13 @@
       meat: { g: GEO.sph, m: MAT.meat, s: [0.55, 0.22, 0.42], rz: 0 },
       gold: { g: GEO.box, m: MAT.gold, s: [0.8, 0.28, 0.45], rz: 0 },
       cash: { g: GEO.box, m: MAT.green, s: [0.8, 0.2, 0.5], rz: 0 },
-      fish: { g: GEO.sph, m: MAT.fish, s: [0.7, 0.18, 0.28], rz: 0 }
+      fish: { g: GEO.sph, m: MAT.fish, s: [0.7, 0.18, 0.28], rz: 0 },
+      banana: { g: GEO.sph, m: MAT.banana, s: [0.6, 0.16, 0.18], rz: 0 }
     };
     for (let i = 0; i < 200; i++) {
       const m = mesh(GEO.sph, MAT.meat, 0, 0, 0, 0.55, 0.22, 0.42); m.visible = false; scene.add(m); dropPool.push(m);
     }
+    for (let i = 0; i < 60; i++) { const m = mesh(GEO.sph, mat('#ffe9a0', { emissive: new THREE.Color('#aa8a30') }), 0, 0, 0, 0.14); m.visible = false; scene.add(m); gunShotPool.push(m); }
     for (let i = 0; i < 40; i++) {
       const m = mesh(GEO.box, mat('#ffb347', { emissive: new THREE.Color('#aa6a00') }), 0, 0, 0, 0.12, 0.12, 1.2); m.visible = false; scene.add(m); shotPool.push(m);
     }
@@ -946,15 +1233,16 @@
       const hpShow = show && b.hp < b.max; o.bg.visible = hpShow; o.fg.visible = hpShow;
       if (!show) continue;
       const K = SG.KINDS[b.kind];
-      o.g.position.set(b.x, 0, b.z); o.g.rotation.y = b.kind === 4 ? Math.PI / 4 : b.face; // смайлик всегда лицом к камере
-      const w = b.moving ? Math.sin(t * 10 + b.ph) * 0.5 : 0;
+      o.g.position.set(b.x, 0, b.z); const ball = b.kind === 4 || b.kind === 7;
+      o.g.rotation.y = ball ? Math.PI / 4 : b.face; // шары-мобы всегда лицом к камере
+      const w = b.moving ? Math.sin(t * (b.kind === 5 ? 14 : 10) + b.ph) * 0.6 : 0;
       o.g.userData.legs.forEach((l, i) => (l.rotation.x = i % 2 ? -w : w));
       const pulse = b.flash > 0 ? 1.08 : 1;
       o.g.userData.inner.scale.setScalar(K.scale * pulse);
-      o.g.userData.inner.position.y = b.kind === 4 ? (b.moving ? Math.abs(Math.sin(t * 9)) * 1.1 : Math.sin(t * 2) * 0.05) : Math.sin(t * 2 + b.ph) * 0.04; // убегая, подпрыгивает
+      o.g.userData.inner.position.y = ball ? (b.moving ? Math.abs(Math.sin(t * 9)) * 1.1 : Math.sin(t * 2) * 0.05) : Math.sin(t * 2 + b.ph) * 0.04; // убегая, подпрыгивает
       if (o.name) o.name.position.set(b.x, 4.5 * K.scale, b.z);
       if (hpShow) {
-        const y = (b.kind === 4 ? 3.9 : 3.8) * K.scale, k = Math.max(0.001, b.hp / b.max);
+        const y = (ball ? 3.9 : b.kind === 6 ? 3.6 : 3.8) * K.scale, k = Math.max(0.001, b.hp / b.max);
         o.bg.position.set(b.x, y, b.z); o.fg.position.set(b.x - 1.55 * (1 - k), y, b.z);
         o.fg.scale.set(3.1 * k, 0.3, 1);
       }
@@ -1043,12 +1331,13 @@
       const s = G.shots[i]; m.visible = !!s;
       if (s) { m.position.set(s.x, s.y, s.z); m.rotation.y = s.dir || 0; }
     });
+    gunShotPool.forEach((m, i) => { const s = G.gshots[i]; m.visible = !!s; if (s) m.position.set(s.x, s.y, s.z); });
   }
 
   // ---------- кадр ----------
   R.frame = function (dt) {
     const G = SG.G, p = G.p;
-    syncTrees(); syncGiants(); syncOres(); syncPlayer(dt); syncBears(); syncWorkers(); syncCollectors(); syncMiners(); syncFishers(); syncFish(); syncFishFx(); syncShip(); syncSea(); syncCustomers(); syncTurrets(); syncDropsShots(); syncStalls();
+    syncTrees(); syncGiants(); syncPalms(); syncOres(); syncPlayer(dt); syncBears(); syncWorkers(); syncCollectors(); syncMiners(); syncFishers(); syncFish(); syncFishFx(); syncJungle(); syncStations(); syncShip(); syncSea(); syncSad(); syncCustomers(); syncTurrets(); syncDropsShots(); syncStalls();
     for (const v of padV) drawPad(v);
     flames.forEach((f, i) => { f.scale.y = f.userData.h * (1 + Math.sin(G.t * (12 + i * 3) + i) * 0.12); });
     // камера плавно едет за игроком
