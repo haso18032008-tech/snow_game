@@ -1,0 +1,45 @@
+{% extends "snow_game/panel/base.html" %}
+{% block title %}Сводка{% endblock %}
+{% block body %}
+<h1>Сводка по игре</h1>
+<div class="grid g4" style="margin-bottom:16px">
+{% for name, val in cards %}<div class="kpi"><small>{{ name }}</small><b>{{ val }}</b></div>{% endfor %}
+</div>
+
+<div class="grid g2">
+ <div class="card"><h2>Новые игроки за 30 дней</h2>
+  <div class="bars">{% for r in new_series %}<i style="height:{{ r.h }}%" title="{{ r.label }}: {{ r.n }}"></i>{% endfor %}</div>
+  <div class="xl"><span>{{ new_series.0.label }}</span><span>{{ new_series.14.label }}</span><span>{{ new_series.29.label }}</span></div>
+ </div>
+ <div class="card"><h2>Последняя активность (по дням)</h2>
+  <div class="bars">{% for r in act_series %}<i style="height:{{ r.h }}%" title="{{ r.label }}: {{ r.n }}"></i>{% endfor %}</div>
+  <div class="xl"><span>{{ act_series.0.label }}</span><span>{{ act_series.14.label }}</span><span>{{ act_series.29.label }}</span></div>
+  <p class="mut" style="margin:8px 0 0;font-size:13px">Считается по времени последнего сохранения каждого игрока: игрок попадает в тот день, когда был в игре в последний раз.</p>
+ </div>
+</div>
+
+<div class="card"><h2>Игроки по уровню топора</h2>
+ <div class="bars">{% for r in axe_rows %}<i style="height:{{ r.h }}%" title="Ур. {{ r.lvl }}: {{ r.n }}"></i>{% endfor %}</div>
+ <div class="xl"><span>ур. 1</span><span>ур. 15</span><span>ур. 30</span></div>
+</div>
+
+<div class="grid g2">
+ <div class="card"><h2>Топ-10 по заработку</h2>
+  <div class="wrap"><table>{% for t in top %}<tr><td>{{ forloop.counter }}</td><td><a href="{% url 'snow_panel_player' t.s.pk %}">{{ t.s.nick|default:t.login }}</a> <span class="mut">{{ t.login }}</span>{% if t.s.hidden %}<span class="tag warn">скрыт</span>{% endif %}</td><td class="n">{{ t.earned }} $</td></tr>{% empty %}<tr><td class="mut">Пока никого</td></tr>{% endfor %}</table></div>
+ </div>
+ <div class="card"><h2>Последние действия админа</h2>
+  <div class="wrap"><table>{% for l in logs %}<tr><td class="mut">{{ l.action_time|date:"d.m H:i" }}</td><td>{{ l.user.get_username }} → <a href="{% url 'snow_panel_player' l.object_id %}">{{ l.object_repr }}</a></td><td>{{ l.change_message }}</td></tr>{% empty %}<tr><td class="mut">Действий ещё не было</td></tr>{% endfor %}</table></div>
+ </div>
+</div>
+
+<div class="grid g2">
+ <div class="card"><h2>Ресурсы у всех игроков (сумма)</h2><div class="wrap"><table>{% for n, v in res_rows %}<tr><td>{{ n }}</td><td class="n">{{ v }}</td></tr>{% endfor %}</table></div></div>
+ <div class="card"><h2>Статистика всех игроков (сумма)</h2><div class="wrap"><table>{% for n, v in stat_rows %}<tr><td>{{ n }}</td><td class="n">{{ v }}</td></tr>{% endfor %}</table></div></div>
+</div>
+
+<div class="card"><h2>Улучшения: у скольких игроков и какой средний уровень</h2>
+ <div class="wrap"><table><tr><th>Улучшение</th><th class="n">Игроков</th><th>Доля</th><th class="n">Ср. уровень</th><th class="n">Максимум</th></tr>
+ {% for r in lvl_rows %}<tr><td>{{ r.name }}</td><td class="n">{{ r.owners }}</td><td><div class="pb"><i style="width:{{ r.pct }}%"></i></div></td><td class="n">{{ r.avg }}</td><td class="n">{{ r.max }}</td></tr>{% endfor %}
+ <tr><td>Башни (построено всего)</td><td class="n" colspan="4">{{ towers }}</td></tr></table></div>
+</div>
+{% endblock %}

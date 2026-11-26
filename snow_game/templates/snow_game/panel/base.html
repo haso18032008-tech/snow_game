@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}Панель{% endblock %} — Снежная ферма</title>
+<style>
+:root{--bg:#f3f6fa;--card:#fff;--tx:#18222e;--mut:#6b7a8c;--line:#dde4ec;--ac:#2a7de1;--ac2:#e8f1fd;--ok:#1f9d55;--bad:#d64545;--warn:#e0a21a}
+@media (prefers-color-scheme:dark){:root{--bg:#10161d;--card:#18212b;--tx:#e6edf5;--mut:#8b9bad;--line:#2a3745;--ac:#5aa2ff;--ac2:#1d2d44;--ok:#4cc38a;--bad:#ff7070;--warn:#f0c04a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bar b{margin-right:12px;font-size:17px}.bar a.t{padding:7px 14px;border-radius:9px;color:var(--tx)}.bar a.t.on{background:var(--ac2);color:var(--ac);font-weight:600}
+.bar .sp{flex:1}main{max-width:1280px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 14px}h2{font-size:17px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px}.g4{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}.g3{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi small{color:var(--mut);display:block}.kpi b{font-size:22px}
+table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:13px;color:var(--mut);font-weight:600;white-space:nowrap}tr:hover td{background:var(--ac2)}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.wrap{overflow-x:auto}.mut{color:var(--mut)}.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:var(--ac2);color:var(--ac);margin-left:4px}
+.tag.bad{background:rgba(214,69,69,.15);color:var(--bad)}.tag.warn{background:rgba(224,162,26,.18);color:var(--warn)}.tag.ok{background:rgba(31,157,85,.15);color:var(--ok)}
+input,select,button{font:inherit;color:var(--tx)}input[type=text],input[type=number],input[type=search],input[type=password],select{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 10px;width:100%}
+button,.btn{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:8px 16px;cursor:pointer;font-weight:600;display:inline-block}.btn:hover{text-decoration:none;opacity:.9}
+button.sec,.btn.sec{background:var(--ac2);color:var(--ac)}button.bad{background:var(--bad)}button.ok{background:var(--ok)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1 1 150px}.row>.f{flex:0 0 auto}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:3px}
+.msg{padding:10px 14px;border-radius:10px;margin-bottom:12px}.msg.success{background:rgba(31,157,85,.15);color:var(--ok)}.msg.error{background:rgba(214,69,69,.15);color:var(--bad)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line)}.bars i{flex:1;background:var(--ac);border-radius:3px 3px 0 0;min-height:2px;position:relative}.bars i:hover{opacity:.7}
+.xl{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:3px}
+.f2{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 14px}
+.pg{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}.pb{height:8px;border-radius:5px;background:var(--ac2);overflow:hidden;min-width:70px}.pb i{display:block;height:100%;background:var(--ac)}
+</style>
+</head>
+<body>
+<header><div class="bar">
+ <b>❄ Панель</b>
+ <a class="t {% if tab == 'dash' %}on{% endif %}" href="{% url 'snow_panel' %}">Сводка</a>
+ <a class="t {% if tab == 'players' %}on{% endif %}" href="{% url 'snow_panel_players' %}">Игроки</a>
+ <span class="sp"></span>
+ <a class="t" href="{% url 'admin:snow_game_gamesave_changelist' %}">Админка Django</a>
+ <a class="t" href="{% url 'snow_game' %}">← В игру</a>
+</div></header>
+<main>
+{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+{% block body %}{% endblock %}
+</main>
+</body>
+</html>

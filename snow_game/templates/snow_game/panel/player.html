@@ -1,0 +1,57 @@
+{% extends "snow_game/panel/base.html" %}
+{% block title %}{{ login }}{% endblock %}
+{% block body %}
+<p><a href="{% url 'snow_panel_players' %}">← Все игроки</a></p>
+<h1>{{ s.nick|default:login }} <span class="mut" style="font-size:15px">аккаунт {{ login }} · ID {{ s.pk }}</span>
+ {% if u.is_superuser %}<span class="tag ok">админ</span>{% endif %}{% if not u.is_active %}<span class="tag bad">заблокирован</span>{% endif %}{% if s.hidden %}<span class="tag warn">скрыт из рейтинга</span>{% endif %}</h1>
+
+<div class="grid g4" style="margin-bottom:16px">
+ <div class="kpi"><small>Заработано всего</small><b>{{ earned }} $</b></div>
+ <div class="kpi"><small>Время в игре</small><b>{{ time }}</b></div>
+ <div class="kpi"><small>Регистрация</small><b style="font-size:17px">{{ s.created_at|date:"d.m.Y H:i" }}</b></div>
+ <div class="kpi"><small>Был в игре</small><b style="font-size:17px">{{ s.updated_at|date:"d.m.Y H:i" }}</b></div>
+ <div class="kpi"><small>Последний вход</small><b style="font-size:17px">{{ last_login|date:"d.m.Y H:i"|default:"—" }}</b></div>
+ <div class="kpi"><small>Поколение сохранения</small><b>{{ s.reset_epoch }}</b></div>
+</div>
+
+<div class="card"><h2>Действия</h2>
+ <div class="row" style="align-items:center">
+  <form method="post" class="f">{% csrf_token %}<input type="hidden" name="action" value="{% if s.hidden %}unhide{% else %}hide{% endif %}"><button class="sec">{% if s.hidden %}Вернуть в рейтинг{% else %}Скрыть из рейтинга{% endif %}</button></form>
+  {% if u.is_active %}
+  <form method="post" class="f" onsubmit="return {% if can_ban %}confirm('Заблокировать аккаунт? Игрок не сможет войти.'){% else %}false{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="ban"><button class="bad" {% if not can_ban %}disabled title="Админа и себя блокировать нельзя"{% endif %}>Заблокировать</button></form>
+  {% else %}
+  <form method="post" class="f">{% csrf_token %}<input type="hidden" name="action" value="unban"><button class="ok">Разблокировать</button></form>
+  {% endif %}
+  <form method="post" class="f" onsubmit="return confirm('Сбросить весь прогресс игрока? Это необратимо, устройства игрока тоже начнут с нуля.')">{% csrf_token %}<input type="hidden" name="action" value="reset"><button class="bad">Сбросить прогресс</button></form>
+ </div>
+</div>
+
+<div class="card"><h2>Новый пароль</h2>
+ <p class="mut" style="margin-top:0">Восстановление по почте не работает — если игрок забыл пароль, задай новый и передай ему лично.</p>
+ <form method="post" class="row">{% csrf_token %}<input type="hidden" name="action" value="password">
+  <div><label>Новый пароль (от 6 символов)</label><input type="text" name="password" autocomplete="off"></div>
+  <div class="f"><button>Задать пароль</button></div>
+ </form>
+</div>
+
+{% if empty %}<div class="msg error">Сохранение пустое (сброшено или игрок ещё не играл). Поля ниже — нули; если сохранить, создастся новое состояние.</div>{% endif %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="save">
+ <div class="card"><h2>Профиль</h2><div class="f2">
+  <div><label>Ник (до 16 символов)</label><input type="text" name="nick" maxlength="16" value="{{ s.nick }}"></div>
+  <div><label>&nbsp;</label><label style="color:var(--tx);font-size:15px"><input type="checkbox" name="hidden" {% if s.hidden %}checked{% endif %}> Скрыт из таблицы лидеров</label></div>
+ </div></div>
+ <div class="card"><h2>Ресурсы</h2><div class="f2">{% for k, name, v in res %}<div><label>{{ name }}</label><input type="number" step="any" min="0" name="res_{{ k }}" value="{{ v }}"></div>{% endfor %}</div></div>
+ <div class="card"><h2>Улучшения (уровень от 0)</h2><div class="f2">{% for k, name, mx, v in lvs %}<div><label>{{ name }} <span class="mut">(макс. {{ mx }}, ключ {{ k }})</span></label><input type="number" min="0" max="{{ mx }}" step="1" name="lv_{{ k }}" value="{{ v }}"></div>{% endfor %}</div></div>
+ <div class="card"><h2>Лавки (склад и касса)</h2><div class="f2">{% for sid, name, stock, cash in stalls %}
+  <div><label>{{ name }}: товара на складе</label><input type="number" step="any" min="0" name="sl_{{ sid }}_stock" value="{{ stock }}"></div>
+  <div><label>{{ name }}: денег в кассе</label><input type="number" step="any" min="0" name="sl_{{ sid }}_cash" value="{{ cash }}"></div>{% endfor %}</div></div>
+ <div class="card"><h2>Статистика</h2><div class="f2">{% for k, name, v in stats %}<div><label>{{ name }} <span class="mut">({{ k }})</span></label><input type="number" step="any" min="0" name="st_{{ k }}" value="{{ v }}"></div>{% endfor %}</div></div>
+ <div class="card" style="position:sticky;bottom:8px;box-shadow:0 4px 20px rgba(0,0,0,.2)">
+  <div class="row" style="align-items:center"><div class="mut">Изменения сразу попадут на сервер. «Заработано всего» — очки рейтинга: правь осознанно.</div><div class="f"><button>Сохранить изменения</button></div></div>
+ </div>
+</form>
+
+<div class="card"><h2>История действий над этим игроком</h2>
+ <div class="wrap"><table>{% for l in logs %}<tr><td class="mut">{{ l.action_time|date:"d.m.Y H:i" }}</td><td>{{ l.user.get_username }}</td><td>{{ l.change_message }}</td></tr>{% empty %}<tr><td class="mut">Пока пусто</td></tr>{% endfor %}</table></div>
+</div>
+{% endblock %}

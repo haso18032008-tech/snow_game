@@ -50,6 +50,7 @@
   <label>Наши проекты</label>
   <a class="btn sec" href="{{ finstat_url }}" target="_blank" rel="noopener">Финстат — личные финансы</a>
   {% endif %}
+  {% if is_admin %}<a class="btn sec" href="{% url 'snow_panel' %}">Админка</a>{% endif %}
   <button class="btn danger" id="reset">Сбросить прогресс</button>
  </div>
  <div id="pane-stat" class="pane" style="display:none"><div id="statbody"></div></div>

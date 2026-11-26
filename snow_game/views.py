@@ -36,7 +36,9 @@ def snow_game_view(request):
         # страница привязки Google показывается, только если Google вообще настроен
         "accountUrl": reverse("socialaccount_connections") if settings.GOOGLE_ENABLED else "",
     }
-    return render(request, "snow_game/index.html", {"cfg": cfg, "finstat_url": settings.FINSTAT_URL})
+    # кнопка «Админка» в настройках рисуется только суперпользователю; сама панель всё равно проверяет права (404 остальным)
+    is_admin = auth and request.user.is_active and request.user.is_superuser
+    return render(request, "snow_game/index.html", {"cfg": cfg, "finstat_url": settings.FINSTAT_URL, "is_admin": is_admin})
 
 
 @never_cache

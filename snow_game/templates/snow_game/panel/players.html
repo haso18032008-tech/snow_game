@@ -1,0 +1,45 @@
+{% extends "snow_game/panel/base.html" %}
+{% block title %}Игроки{% endblock %}
+{% block body %}
+<h1>Игроки <span class="mut" style="font-size:15px">— найдено {{ total }}</span></h1>
+<form class="card" method="get">
+ <div class="row">
+  <div><label>Поиск (логин, ник или ID)</label><input type="search" name="q" value="{{ q }}" placeholder="Начни вводить..."></div>
+  <div><label>Показать</label><select name="status">{% for v, n in statuses %}<option value="{{ v }}" {% if v == status %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div><label>Сортировка</label><select name="sort">{% for v, n in sorts %}<option value="{{ v }}" {% if v == sort %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div><label>Порядок</label><select name="dir"><option value="desc" {% if dir == 'desc' %}selected{% endif %}>Сначала большие / новые</option><option value="asc" {% if dir == 'asc' %}selected{% endif %}>Сначала малые / старые</option></select></div>
+  <div class="f"><button>Применить</button></div>
+ </div>
+</form>
+
+<form method="post" class="card">{% csrf_token %}
+ <div class="wrap"><table>
+  <tr><th><input type="checkbox" onclick="document.querySelectorAll('.pick').forEach(c=>c.checked=this.checked)"></th><th>ID</th><th>Аккаунт</th><th>Ник</th><th class="n">Заработано, $</th><th class="n">Деньги</th><th class="n">Топор</th><th class="n">Время</th><th class="n">Мобов</th><th class="n">Смертей</th><th>Регистрация</th><th>Был в игре</th><th></th></tr>
+  {% for r in rows %}
+  <tr>
+   <td><input class="pick" type="checkbox" name="ids" value="{{ r.s.pk }}"></td>
+   <td class="mut">{{ r.s.pk }}</td>
+   <td><a href="{% url 'snow_panel_player' r.s.pk %}">{{ r.login }}</a>{% if r.staff %}<span class="tag ok">админ</span>{% endif %}{% if not r.active %}<span class="tag bad">заблокирован</span>{% endif %}{% if r.s.hidden %}<span class="tag warn">скрыт</span>{% endif %}</td>
+   <td>{{ r.s.nick|default:"—" }}</td>
+   <td class="n">{{ r.earned }}</td><td class="n">{{ r.cash }}</td><td class="n">{{ r.axe }}</td><td class="n">{{ r.time }}</td><td class="n">{{ r.kills }}</td><td class="n">{{ r.deaths }}</td>
+   <td class="mut">{{ r.s.created_at|date:"d.m.Y" }}</td><td class="mut">{{ r.s.updated_at|date:"d.m.Y H:i" }}</td>
+   <td><a class="btn sec" href="{% url 'snow_panel_player' r.s.pk %}">Открыть</a></td>
+  </tr>
+  {% empty %}<tr><td colspan="13" class="mut">Никого не нашлось.</td></tr>{% endfor %}
+ </table></div>
+ <div class="row" style="margin-top:12px">
+  <div class="f"><select name="action" style="width:auto">
+   <option value="">Для отмеченных...</option><option value="hide">Скрыть из рейтинга</option><option value="unhide">Вернуть в рейтинг</option>
+   <option value="ban">Заблокировать аккаунт</option><option value="unban">Разблокировать</option><option value="reset">Сбросить прогресс</option></select></div>
+  <div class="f"><button onclick="return this.form.action.value!='reset'||confirm('Сбросить прогресс у отмеченных игроков? Это необратимо.')">Выполнить</button></div>
+ </div>
+</form>
+
+{% if page.paginator.num_pages > 1 %}
+<div class="pg">
+ {% if page.has_previous %}<a class="btn sec" href="?{{ keep }}&page={{ page.previous_page_number }}">← Назад</a>{% endif %}
+ <span class="mut">Страница {{ page.number }} из {{ page.paginator.num_pages }}</span>
+ {% if page.has_next %}<a class="btn sec" href="?{{ keep }}&page={{ page.next_page_number }}">Вперёд →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}
